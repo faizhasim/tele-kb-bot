@@ -13,10 +13,10 @@
  * @module
  */
 
-import { execFileSync } from "node:child_process";
+import { execFileSync } from 'node:child_process';
 
 let _available: boolean | null = null;
-let _binaryPath: string = "qmd";
+let _binaryPath: string = 'qmd';
 
 const configure = (binaryPath: string): void => {
   _binaryPath = binaryPath;
@@ -26,7 +26,7 @@ const configure = (binaryPath: string): void => {
 const detect = (): boolean => {
   if (_available !== null) return _available;
   try {
-    execFileSync("command", ["-v", _binaryPath], { stdio: "ignore" });
+    execFileSync('command', ['-v', _binaryPath], { stdio: 'ignore' });
     _available = true;
   } catch {
     _available = false;
@@ -42,8 +42,8 @@ const run = (args: Array<string>, timeout = 30_000): string | null => {
   if (!detect()) return null;
   try {
     return execFileSync(_binaryPath, args, {
-      encoding: "utf-8",
-      stdio: "pipe",
+      encoding: 'utf-8',
+      stdio: 'pipe',
       timeout,
     });
   } catch {
@@ -64,9 +64,9 @@ const parseOutput = (raw: string): Array<QmdResult> => {
       ? parsed
       : (((parsed as Record<string, unknown>).results as Array<Record<string, unknown>>) ?? []);
     return items.map((i) => ({
-      filePath: String(i.path ?? i.file ?? i.filePath ?? ""),
+      filePath: String(i.path ?? i.file ?? i.filePath ?? ''),
       score: Number(i.score ?? i.relevance ?? 0),
-      snippet: String(i.snippet ?? i.content ?? i.text ?? "").slice(0, 200),
+      snippet: String(i.snippet ?? i.content ?? i.text ?? '').slice(0, 200),
     }));
   } catch {
     return [];
@@ -74,17 +74,17 @@ const parseOutput = (raw: string): Array<QmdResult> => {
 };
 
 const search = (q: string, maxResults = 5): Array<QmdResult> | null => {
-  const out = run(["search", q, "--json", "--limit", String(maxResults)]);
+  const out = run(['search', q, '--json', '--limit', String(maxResults)]);
   return out ? parseOutput(out) : null;
 };
 
 const vsearch = (q: string, maxResults = 5): Array<QmdResult> | null => {
-  const out = run(["vsearch", q, "--json", "--limit", String(maxResults)], 60_000);
+  const out = run(['vsearch', q, '--json', '--limit', String(maxResults)], 60_000);
   return out ? parseOutput(out) : null;
 };
 
 const query = (q: string, maxResults = 5): Array<QmdResult> | null => {
-  const out = run(["query", q, "--json", "--limit", String(maxResults)], 60_000);
+  const out = run(['query', q, '--json', '--limit', String(maxResults)], 60_000);
   return out ? parseOutput(out) : null;
 };
 

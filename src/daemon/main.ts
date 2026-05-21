@@ -7,21 +7,20 @@
  * @module
  */
 
-import { NodeFileSystem } from "@effect/platform-node";
-import { Effect, Layer, ManagedRuntime } from "effect";
-import { loadConfig } from "../config/loader";
-import { ensureConfigDirs, resolveConfigDir } from "../config/paths";
-import { BINARY_NAME } from "../constants";
-import { createCLILogger, EffectLoggerLive } from "../logger";
-import { createTelegramClient } from "../telegram/client";
-import { createBotController } from "./bot";
-import { createSessionRegistry } from "./session-registry";
+import { BunFileSystem } from '@effect/platform-bun';
+import { Effect, Layer, ManagedRuntime } from 'effect';
+import { loadConfig } from '../config/loader';
+import { ensureConfigDirs, resolveConfigDir } from '../config/paths';
+import { BINARY_NAME } from '../constants';
+import { createCLILogger, EffectLoggerLive } from '../logger';
+import { createBotController } from './bot';
+import { createSessionRegistry } from './session-registry';
 
 // ─── Runtime ────────────────────────────────────────────────────────
 
 const daemonLayer = Layer.merge(
-  NodeFileSystem.layer,
-  EffectLoggerLive(BINARY_NAME, (process.env.LOG_LEVEL as string) ?? "info"),
+  BunFileSystem.layer,
+  EffectLoggerLive(BINARY_NAME, (process.env.LOG_LEVEL as string) ?? 'info'),
 );
 
 const runtime = ManagedRuntime.make(daemonLayer);
@@ -38,25 +37,25 @@ const setupSignalHandlers = (
   const shutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    log.info({ signal }, "Received shutdown signal");
+    log.info({ signal }, 'Received shutdown signal');
 
     await controller.stop();
-    log.info("Bot stopped");
+    log.info('Bot stopped');
 
     await registry.disposeAll();
-    log.info("Sessions disposed");
+    log.info('Sessions disposed');
 
     process.exit(0);
   };
 
-  process.on("SIGINT", () => shutdown("SIGINT"));
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
-  process.on("unhandledRejection", (reason) => {
-    log.error({ err: reason }, "Unhandled promise rejection");
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('unhandledRejection', (reason) => {
+    log.error({ err: reason }, 'Unhandled promise rejection');
   });
-  process.on("uncaughtException", (err) => {
-    log.error({ err }, "Uncaught exception");
-    console.error("Fatal error:", err.message);
+  process.on('uncaughtException', (err) => {
+    log.error({ err }, 'Uncaught exception');
+    console.error('Fatal error:', err.message);
     process.exit(1);
   });
 };
@@ -70,7 +69,7 @@ const startDaemon = (configOverride?: string): Promise<void> =>
   runtime.runPromise(
     Effect.gen(function* () {
       const log = createCLILogger(BINARY_NAME);
-      log.info("tele-kb-bot daemon starting...");
+      log.info('tele-kb-bot daemon starting...');
 
       // Load config
       const configDir = configOverride ?? resolveConfigDir();
@@ -81,7 +80,7 @@ const startDaemon = (configOverride?: string): Promise<void> =>
           provider: config.llm.provider,
           model: config.llm.model,
         },
-        "Config loaded",
+        'Config loaded',
       );
 
       // Ensure directories
@@ -89,22 +88,24 @@ const startDaemon = (configOverride?: string): Promise<void> =>
 
       // Create services
       const registry = createSessionRegistry(config, resolvedDir);
-      const client = createTelegramClient(config.telegram.bot_token);
 
-      // Verify bot token
-      const verification = yield* client.verifyToken();
-      if (!verification.ok) {
-        log.error({ error: verification.error }, "Bot token verification failed");
+      // Verify bot token via Telegram API
+      const tokenResp = yield* Effect.promise(() =>
+        fetch(`https://api.telegram.org/bot${config.telegram.bot_token}/getMe`).then((r) => r.json()),
+      );
+      const tokenData = tokenResp as { ok: boolean; result?: { first_name: string }; description?: string };
+      if (!tokenData.ok) {
+        log.error({ error: tokenData.description }, 'Bot token verification failed');
         console.error("ERROR: Invalid Telegram bot token. Run 'tele-kb-bot setup' to reconfigure.");
         process.exit(1);
       }
-      log.info({ botName: verification.botName }, "Bot token verified");
+      log.info({ botName: tokenData.result?.first_name }, 'Bot token verified');
 
       // Create controller
-      const controller = createBotController(client, registry, config, resolvedDir);
+      const controller = createBotController(config, registry);
       setupSignalHandlers(controller, registry);
 
-      log.info("Starting bot polling...");
+      log.info('Starting bot polling...');
       yield* Effect.promise(() => controller.start());
     }),
   );

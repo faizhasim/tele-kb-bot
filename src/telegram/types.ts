@@ -5,7 +5,7 @@
  */
 
 /** Incoming message types we handle */
-export type IncomingMessageType = "text" | "photo" | "document" | "voice" | "media_group" | "command";
+export type IncomingMessageType = 'text' | 'photo' | 'document' | 'voice' | 'media_group' | 'command';
 
 /** Parsed incoming message from Telegram */
 export interface IncomingMessage {

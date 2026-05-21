@@ -7,7 +7,7 @@
  * @module
  */
 
-import type { SearchResult } from "./types";
+import type { SearchResult } from './types';
 
 // ─── Limits ─────────────────────────────────────────────────────────
 
@@ -47,7 +47,7 @@ const buildDailySection = (label: string, content?: string, limit = LIMIT_TODAY_
 const buildSearchSection = (results: ReadonlyArray<SearchResult>): string | undefined => {
   if (results.length === 0) return undefined;
   const lines = results.map((r) => `- **${r.filePath}** (score: ${r.score}): ${r.snippet}`);
-  const joined = lines.join("\n");
+  const joined = lines.join('\n');
   if (joined.length > LIMIT_SEARCH) {
     return `### Relevant memories\n${joined.slice(0, LIMIT_SEARCH)}`;
   }
@@ -88,12 +88,12 @@ const buildMemoryContext = (input: ContextInput): string => {
   };
 
   add(buildScratchpadSection(input.scratchpad));
-  add(buildDailySection("Daily log (today)", input.todayLog, LIMIT_TODAY_LOG));
+  add(buildDailySection('Daily log (today)', input.todayLog, LIMIT_TODAY_LOG));
   add(buildSearchSection(input.searchResults ?? []));
   add(buildMemorySection(input.longTermMemory));
-  add(buildDailySection("Daily log (yesterday)", input.yesterdayLog, LIMIT_YESTERDAY_LOG));
+  add(buildDailySection('Daily log (yesterday)', input.yesterdayLog, LIMIT_YESTERDAY_LOG));
 
-  return sections.join("\n\n");
+  return sections.join('\n\n');
 };
 
 export type { ContextInput };

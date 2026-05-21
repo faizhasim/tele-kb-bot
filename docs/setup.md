@@ -5,7 +5,7 @@ First-time setup for tele-kb-bot.
 ## Prerequisites
 
 1. A Telegram bot token from [@BotFather](https://t.me/BotFather)
-2. An [Opcencode Go](https://opencode.go/) API key for the LLM
+2. An [OpenCode Go](https://opencode.ai/go) subscription — the pi SDK has it built-in, you just need the API key
 3. macOS with Homebrew installed
 
 ## Step-by-Step
@@ -34,7 +34,9 @@ The wizard will prompt for:
 
 - Telegram bot token
 - Allowed user IDs (your Telegram user ID)
-- LLM API key (optional — can use env var instead)
+- LLM API key (optional — can use `OPENER_GO_API_KEY` env var instead)
+
+The API key is stored in `~/.config/tele-kb-bot/agents/auth.json`. The pi SDK has OpenCode Go built-in — no extra provider configuration needed.
 
 ### 4. Verify
 

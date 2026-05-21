@@ -7,7 +7,7 @@
  * @module
  */
 
-import type { SearchResult } from "./types";
+import type { SearchResult } from './types';
 
 // ─── BM25 Constants ─────────────────────────────────────────────────
 
@@ -73,9 +73,9 @@ const snippet = (content: string, query: string): string => {
   if (idx === -1) return content.substring(0, CONTEXT_CHARS * 2);
   const start = Math.max(0, idx - CONTEXT_CHARS);
   const end = Math.min(content.length, idx + query.length + CONTEXT_CHARS);
-  const prefix = start > 0 ? "…" : "";
-  const suffix = end < content.length ? "…" : "";
-  return prefix + content.substring(start, end).replace(/\n/g, " ").trim() + suffix;
+  const prefix = start > 0 ? '…' : '';
+  const suffix = end < content.length ? '…' : '';
+  return prefix + content.substring(start, end).replace(/\n/g, ' ').trim() + suffix;
 };
 
 // ─── Index ──────────────────────────────────────────────────────────

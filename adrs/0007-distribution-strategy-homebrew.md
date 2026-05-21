@@ -8,7 +8,7 @@ decision-makers: Mohd Faiz Hasim
 
 ## Context and Problem Statement
 
-tele-kb-bot targets macOS users (Mac Mini home server, developer machines). How should we distribute the compiled binary so users can install, update, and manage it with standard macOS tooling?
+tele-kb-bot targets macOS users (macOS and Linux machines). How should we distribute the compiled binary so users can install, update, and manage it with standard macOS tooling?
 
 The bot must be easy to install, update automatically, and integrate with macOS launchd for background operation.
 

@@ -10,26 +10,26 @@
  * @module
  */
 
-import { FileSystem } from "@effect/platform/FileSystem";
-import * as S from "@effect/schema/Schema";
-import { Data, Effect, pipe } from "effect";
+import { FileSystem } from '@effect/platform/FileSystem';
+import * as S from '@effect/schema/Schema';
+import { Data, Effect, pipe } from 'effect';
 
-import yaml from "js-yaml";
-import { EffectLogger } from "../logger";
-import { mergeConfig, validateSemantic } from "./defaults";
-import { resolveConfigDir } from "./paths";
-import type { Config } from "./schema";
-import { ConfigSchema } from "./schema";
+import yaml from 'js-yaml';
+import { EffectLogger } from '../logger';
+import { mergeConfig, validateSemantic } from './defaults';
+import { resolveConfigDir } from './paths';
+import type { Config } from './schema';
+import { ConfigSchema } from './schema';
 
-const CONFIG_FILENAME = "config.yaml";
+const CONFIG_FILENAME = 'config.yaml';
 
 // ─── Tagged Errors ──────────────────────────────────────────────────
 
-class ConfigLoadError extends Data.TaggedError("ConfigLoadError")<{
+class ConfigLoadError extends Data.TaggedError('ConfigLoadError')<{
   readonly message: string;
 }> {}
 
-class ConfigValidationError extends Data.TaggedError("ConfigValidationError")<{
+class ConfigValidationError extends Data.TaggedError('ConfigValidationError')<{
   readonly errors: ReadonlyArray<string>;
   readonly configPath: string;
 }> {}
@@ -41,7 +41,7 @@ type LoadError = ConfigLoadError | ConfigValidationError;
 interface LoadConfigResult {
   readonly config: Config;
   readonly configDir: string;
-  readonly source: "file" | "env-only" | "defaults";
+  readonly source: 'file' | 'env-only' | 'defaults';
 }
 
 // ─── Internal Helpers ───────────────────────────────────────────────
@@ -55,7 +55,7 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
   const t = raw.telegram as Record<string, unknown> | undefined;
   if (t) {
     result.telegram = {};
-    if (typeof t.bot_token === "string") (result.telegram as Record<string, unknown>).bot_token = t.bot_token;
+    if (typeof t.bot_token === 'string') (result.telegram as Record<string, unknown>).bot_token = t.bot_token;
     if (Array.isArray(t.allowed_user_ids))
       (result.telegram as Record<string, unknown>).allowed_user_ids = t.allowed_user_ids;
   }
@@ -63,29 +63,29 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
   const l = raw.llm as Record<string, unknown> | undefined;
   if (l) {
     result.llm = {};
-    if (typeof l.provider === "string") (result.llm as Record<string, unknown>).provider = l.provider;
-    if (typeof l.model === "string") (result.llm as Record<string, unknown>).model = l.model;
-    if (typeof l.reasoning === "string") (result.llm as Record<string, unknown>).reasoning = l.reasoning;
-    if (typeof l.api_key === "string") (result.llm as Record<string, unknown>).api_key = l.api_key;
+    if (typeof l.provider === 'string') (result.llm as Record<string, unknown>).provider = l.provider;
+    if (typeof l.model === 'string') (result.llm as Record<string, unknown>).model = l.model;
+    if (typeof l.reasoning === 'string') (result.llm as Record<string, unknown>).reasoning = l.reasoning;
+    if (typeof l.api_key === 'string') (result.llm as Record<string, unknown>).api_key = l.api_key;
   }
 
   const m = raw.memory as Record<string, unknown> | undefined;
   if (m) {
     result.memory = {};
-    if (typeof m.enabled === "boolean") (result.memory as Record<string, unknown>).enabled = m.enabled;
-    if (typeof m.auto_inject === "boolean") (result.memory as Record<string, unknown>).auto_inject = m.auto_inject;
+    if (typeof m.enabled === 'boolean') (result.memory as Record<string, unknown>).enabled = m.enabled;
+    if (typeof m.auto_inject === 'boolean') (result.memory as Record<string, unknown>).auto_inject = m.auto_inject;
     const s = m.search as Record<string, unknown> | undefined;
     if (s) {
       const search: Record<string, unknown> = {};
-      if (typeof s.max_results === "number") search.max_results = s.max_results;
-      if (typeof s.mode === "string") search.mode = s.mode;
+      if (typeof s.max_results === 'number') search.max_results = s.max_results;
+      if (typeof s.mode === 'string') search.mode = s.mode;
       (result.memory as Record<string, unknown>).search = search;
     }
     const q = m.qmd as Record<string, unknown> | undefined;
     if (q) {
       const qmd: Record<string, unknown> = {};
-      if (typeof q.enabled === "boolean") qmd.enabled = q.enabled;
-      if (typeof q.binary_path === "string") qmd.binary_path = q.binary_path;
+      if (typeof q.enabled === 'boolean') qmd.enabled = q.enabled;
+      if (typeof q.binary_path === 'string') qmd.binary_path = q.binary_path;
       (result.memory as Record<string, unknown>).qmd = qmd;
     }
   }
@@ -93,11 +93,11 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
   const b = raw.bot as Record<string, unknown> | undefined;
   if (b) {
     result.bot = {};
-    if (typeof b.max_attachments_per_turn === "number")
+    if (typeof b.max_attachments_per_turn === 'number')
       (result.bot as Record<string, unknown>).max_attachments_per_turn = b.max_attachments_per_turn;
-    if (typeof b.streaming_preview === "boolean")
+    if (typeof b.streaming_preview === 'boolean')
       (result.bot as Record<string, unknown>).streaming_preview = b.streaming_preview;
-    if (typeof b.text_chunk_size === "number")
+    if (typeof b.text_chunk_size === 'number')
       (result.bot as Record<string, unknown>).text_chunk_size = b.text_chunk_size;
   }
 
@@ -119,7 +119,7 @@ const applyEnvOverrides = (config: Config): Config => {
       bot_token: botToken ?? config.telegram.bot_token,
       allowed_user_ids: userIds
         ? userIds
-            .split(",")
+            .split(',')
             .map((id) => parseInt(id.trim(), 10))
             .filter((id) => !Number.isNaN(id))
         : config.telegram.allowed_user_ids,
@@ -191,7 +191,7 @@ const loadConfig = (
     const log = yield* EffectLogger;
 
     let fileConfig: Partial<Config> = {};
-    let source: LoadConfigResult["source"] = "defaults";
+    let source: LoadConfigResult['source'] = 'defaults';
 
     // Read config file safely (PlatformError → ConfigLoadError)
     const rawContent = yield* readConfigFile(fs, configPath);
@@ -199,15 +199,15 @@ const loadConfig = (
       try {
         const parsed = yaml.load(rawContent) as Record<string, unknown>;
         fileConfig = parseYamlToPartial(parsed);
-        source = "file";
-        yield* log.debug("Loaded config file", { configPath });
+        source = 'file';
+        yield* log.debug('Loaded config file', { configPath });
       } catch (err) {
         const msg = `Failed to parse config file ${configPath}: ${err instanceof Error ? err.message : String(err)}`;
         yield* log.error(msg, { err });
         return yield* new ConfigLoadError({ message: msg });
       }
     } else {
-      yield* log.debug("No config file found, using defaults + env overrides", {
+      yield* log.debug('No config file found, using defaults + env overrides', {
         configDir,
       });
     }
@@ -220,9 +220,9 @@ const loadConfig = (
 
     // Schema validation via Effect Schema
     const decodedOrError = S.decodeUnknownEither(ConfigSchema)(withEnv);
-    if (decodedOrError._tag === "Left") {
+    if (decodedOrError._tag === 'Left') {
       const errors = [decodedOrError.left.message];
-      yield* log.error("Config schema validation failed", { errors });
+      yield* log.error('Config schema validation failed', { errors });
       return yield* new ConfigValidationError({ errors, configPath });
     }
 
@@ -231,7 +231,7 @@ const loadConfig = (
     // Semantic validation
     const semanticErrors = validateSemantic(validatedConfig);
     if (semanticErrors.length > 0) {
-      yield* log.error("Config semantic validation failed", {
+      yield* log.error('Config semantic validation failed', {
         errors: semanticErrors,
       });
       return yield* new ConfigValidationError({
@@ -241,8 +241,8 @@ const loadConfig = (
     }
 
     // Update source if env vars contributed meaningful overrides
-    if (source === "defaults" && hasEnvOverrides()) {
-      source = "env-only";
+    if (source === 'defaults' && hasEnvOverrides()) {
+      source = 'env-only';
     }
 
     return { config: validatedConfig, configDir, source };
@@ -257,5 +257,51 @@ const loadConfigFromEnv = (): Config => {
   return applyEnvOverrides(base);
 };
 
+/**
+ * Load configuration synchronously (for CLI commands).
+ * Uses readFileSync instead of Effect's FileSystem service.
+ */
+const loadConfigSync = (configDirOverride?: string): LoadConfigResult => {
+  const { readFileSync, existsSync } = require('node:fs');
+  const configDir = configDirOverride ?? resolveConfigDir();
+  const configPath = `${configDir}/${CONFIG_FILENAME}`;
+
+  let fileConfig: Partial<Config> = {};
+  let source: LoadConfigResult['source'] = 'defaults';
+
+  if (existsSync(configPath)) {
+    try {
+      const raw = readFileSync(configPath, 'utf-8');
+      const parsed = yaml.load(raw) as Record<string, unknown>;
+      fileConfig = parseYamlToPartial(parsed);
+      source = 'file';
+    } catch (err) {
+      throw new ConfigLoadError({
+        message: `Failed to parse ${configPath}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
+  const mergedFromFile = mergeConfig(fileConfig);
+  const withEnv = applyEnvOverrides(mergedFromFile);
+
+  const decodedOrError = S.decodeUnknownEither(ConfigSchema)(withEnv);
+  if (decodedOrError._tag === 'Left') {
+    throw new ConfigValidationError({ errors: [decodedOrError.left.message], configPath });
+  }
+
+  const validatedConfig = decodedOrError.right;
+  const semanticErrors = validateSemantic(validatedConfig);
+  if (semanticErrors.length > 0) {
+    throw new ConfigValidationError({ errors: semanticErrors, configPath });
+  }
+
+  if (source === 'defaults' && hasEnvOverrides()) {
+    source = 'env-only';
+  }
+
+  return { config: validatedConfig, configDir, source };
+};
+
 export type { LoadConfigResult };
-export { ConfigLoadError, ConfigValidationError, loadConfig, loadConfigFromEnv };
+export { ConfigLoadError, ConfigValidationError, loadConfig, loadConfigFromEnv, loadConfigSync };

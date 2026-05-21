@@ -7,7 +7,7 @@
  * @module
  */
 
-import type { ScratchpadItem } from "./types";
+import type { ScratchpadItem } from './types';
 
 /** Regex for `- [ ] text` (open) or `- [x] text` (done) */
 const ITEM_RE = /^[\s]*[-*+]\s+\[([ xX])\]\s+(.+)$/;
@@ -17,11 +17,11 @@ const ITEM_RE = /^[\s]*[-*+]\s+\[([ xX])\]\s+(.+)$/;
  */
 const parseScratchpad = (content: string): ReadonlyArray<ScratchpadItem> =>
   content
-    .split("\n")
+    .split('\n')
     .map((line) => {
       const match = ITEM_RE.exec(line);
       if (!match) return null;
-      return { done: match[1]?.toLowerCase() === "x", text: match[2]?.trim() };
+      return { done: match[1]?.toLowerCase() === 'x', text: match[2]?.trim() };
     })
     .filter(Boolean) as Array<ScratchpadItem>;
 
@@ -29,8 +29,8 @@ const parseScratchpad = (content: string): ReadonlyArray<ScratchpadItem> =>
  * Render checklist items back to markdown.
  */
 const renderScratchpad = (items: ReadonlyArray<ScratchpadItem>): string => {
-  const lines = items.map((item) => `- [${item.done ? "x" : " "}] ${item.text}`);
-  return `${lines.join("\n")}\n`;
+  const lines = items.map((item) => `- [${item.done ? 'x' : ' '}] ${item.text}`);
+  return `${lines.join('\n')}\n`;
 };
 
 /**

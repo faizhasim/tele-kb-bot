@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Deploying tele-kb-bot to a Mac Mini for 24/7 operation.
+Deploying tele-kb-bot to a machine for 24/7 operation.
 
 ## Prerequisites
 

@@ -21,6 +21,9 @@ builds:
       - linux-arm64
       - linux-x64-modern
       - windows-x64-modern
+    hooks:
+      pre: |
+        perl -i -pe 's/VERSION = ".*"/VERSION = "{{ .Version }}"/' src/constants.ts
 
 archives:
   - id: default

@@ -64,7 +64,7 @@ The `setup` wizard walks you through connecting your Telegram bot and configurin
 | `tele-kb-bot setup` | Interactive first-run configuration wizard |
 | `tele-kb-bot start` | Run the daemon in the foreground |
 | `tele-kb-bot status` | Show config health, bot info, and version |
-| `tele-kb-bot install` | Create and load a launchd plist for auto-start |
+| `tele-kb-bot install-launchd` | Create and load a launchd plist for auto-start |
 | `tele-kb-bot version` | Print version and exit |
 | `tele-kb-bot help` | Print full usage information |
 
@@ -132,7 +132,7 @@ src/
 ├── index.ts              # Entry point
 ├── constants.ts          # Shared constants
 ├── logger.ts             # EffectLogger service + pino
-├── cli/                  # CLI commands (setup, start, status, install, help)
+├── cli/                  # CLI commands (setup, start, status, install-launchd, help)
 ├── config/               # Schema (Effect Schema), loader, paths, defaults
 ├── daemon/               # Bot controller, session registry, main
 ├── memory/               # Scratchpad, BM25 search, context builder, manager
@@ -148,7 +148,7 @@ src/
 |-------|----------------|
 | [Setup Guide](docs/setup.md) | Creating a bot, running setup, troubleshooting |
 | [Configuration](docs/configuration.md) | Full config schema, env vars, security model |
-| [Deployment](docs/deployment.md) | Launching on a Mac Mini with launchd |
+| [Deployment](docs/deployment.md) | Launching on a machine with launchd |
 | [Nix Guide](docs/nix-guide.md) | Declarative config with home-manager and sops-nix |
 | [Development](docs/development.md) | Building from source, testing, releasing |
 

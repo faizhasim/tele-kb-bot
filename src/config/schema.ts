@@ -7,11 +7,11 @@
  * @module
  */
 
-import * as S from "@effect/schema/Schema";
+import * as S from '@effect/schema/Schema';
 
 // ─── LLM Provider ───────────────────────────────────────────────────
 
-const ReasoningLevel = S.Union(S.Literal("off"), S.Literal("low"), S.Literal("medium"), S.Literal("high"));
+const ReasoningLevel = S.Union(S.Literal('off'), S.Literal('low'), S.Literal('medium'), S.Literal('high'));
 
 const LlmConfig = S.Struct({
   provider: S.String,
@@ -31,7 +31,7 @@ const TelegramConfig = S.Struct({
 
 const SearchConfig = S.Struct({
   max_results: S.Number,
-  mode: S.Union(S.Literal("keyword"), S.Literal("semantic")),
+  mode: S.Union(S.Literal('keyword'), S.Literal('semantic')),
 });
 
 /** qmd is a local markdown search engine (https://github.com/tobi/qmd) */
@@ -73,8 +73,8 @@ export { ConfigSchema };
 
 /** Paths within a config to redact for safe logging. */
 const SECRET_PATHS: ReadonlyArray<[keyof Config, string]> = [
-  ["telegram", "bot_token"],
-  ["llm", "api_key"],
+  ['telegram', 'bot_token'],
+  ['llm', 'api_key'],
 ];
 
 /**
@@ -86,7 +86,7 @@ const redactConfig = (config: Config): Config => {
   for (const [section, field] of SECRET_PATHS) {
     const val = clone[section as string]?.[field];
     if (val !== undefined) {
-      (clone[section as string] as Record<string, unknown>)[field] = "***redacted***";
+      (clone[section as string] as Record<string, unknown>)[field] = '***redacted***';
     }
   }
   return clone as Config;

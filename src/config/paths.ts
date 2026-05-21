@@ -8,13 +8,14 @@
  * @module
  */
 
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { FileSystem } from "@effect/platform/FileSystem";
-import { Effect } from "effect";
+import { mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { FileSystem } from '@effect/platform/FileSystem';
+import { Effect } from 'effect';
 
-const CONFIG_DIR_NAME = "tele-kb-bot";
-const CONFIG_ENV_VAR = "TELE_KB_BOT_CONFIG";
+const CONFIG_DIR_NAME = 'tele-kb-bot';
+const CONFIG_ENV_VAR = 'TELE_KB_BOT_CONFIG';
 
 /**
  * Resolve the config directory path.
@@ -23,7 +24,7 @@ const CONFIG_ENV_VAR = "TELE_KB_BOT_CONFIG";
 const resolveConfigDir = (): string => {
   const envOverride = process.env[CONFIG_ENV_VAR];
   if (envOverride && envOverride.length > 0) return envOverride;
-  return join(homedir(), ".config", CONFIG_DIR_NAME);
+  return join(homedir(), '.config', CONFIG_DIR_NAME);
 };
 
 /**
@@ -32,11 +33,11 @@ const resolveConfigDir = (): string => {
 const resolveConfigPath = (...segments: Array<string>): string => join(resolveConfigDir(), ...segments);
 
 const SUBDIRS = {
-  AGENTS: "agents",
-  MEMORY: "memory",
-  MEMORY_DAILY: "memory/daily",
-  TELEGRAM_TMP: "telegram-tmp",
-  LOGS: "logs",
+  AGENTS: 'agents',
+  MEMORY: 'memory',
+  MEMORY_DAILY: 'memory/daily',
+  TELEGRAM_TMP: 'telegram-tmp',
+  LOGS: 'logs',
 } as const;
 
 type SubdirMap = { readonly [K in keyof typeof SUBDIRS]: string };
@@ -51,6 +52,22 @@ const getConfigSubdirs = (configDir: string): SubdirMap => ({
   TELEGRAM_TMP: join(configDir, SUBDIRS.TELEGRAM_TMP),
   LOGS: join(configDir, SUBDIRS.LOGS),
 });
+
+/**
+ * Ensure the config directory and all subdirectories exist.
+ * Synchronous version for CLI setup (no Effect dependency).
+ * Permissions: 0o700 for all dirs.
+ */
+const ensureConfigDirsSync = (configDir: string): void => {
+  const dirs = [configDir, ...Object.values(getConfigSubdirs(configDir))];
+  for (const dir of dirs) {
+    try {
+      mkdirSync(dir, { recursive: true, mode: 0o700 });
+    } catch {
+      // Best-effort — directory may already exist
+    }
+  }
+};
 
 /**
  * Ensure the config directory and all subdirectories exist.
@@ -71,6 +88,7 @@ export {
   CONFIG_DIR_NAME,
   CONFIG_ENV_VAR,
   ensureConfigDirs,
+  ensureConfigDirsSync,
   getConfigSubdirs,
   resolveConfigDir,
   resolveConfigPath,

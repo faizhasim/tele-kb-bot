@@ -8,7 +8,10 @@
     }
   },
   "files": {
-    "includes": ["src/**/*.ts", "src/**/*.tsx"],
+    "includes": [
+      "src/**/*.ts",
+      "src/**/*.tsx"
+    ],
     "ignoreUnknown": true,
     "maxSize": 1048576
   },
@@ -20,7 +23,9 @@
         "noForEach": {
           "level": "error",
           "options": {
-            "allowedIdentifiers": ["Effect"]
+            "allowedIdentifiers": [
+              "Effect"
+            ]
           }
         },
         "noStaticOnlyClass": "error",
@@ -52,7 +57,7 @@
   "javascript": {
     "formatter": {
       "semicolons": "always",
-      "quoteStyle": "double",
+      "quoteStyle": "single",
       "trailingCommas": "all",
       "arrowParentheses": "always"
     }

@@ -6,7 +6,7 @@
  * @module
  */
 
-const VERSION = "0.1.0";
-const BINARY_NAME = "tele-kb-bot";
+const VERSION = '0.1.0';
+const BINARY_NAME = 'tele-kb-bot';
 
 export { BINARY_NAME, VERSION };

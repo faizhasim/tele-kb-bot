@@ -7,14 +7,14 @@
  * @module
  */
 
-import { mkdirSync } from "node:fs";
-import type { Config } from "../config/schema";
-import type { SessionRegistry } from "../daemon/session-registry";
-import { getLogger } from "../logger";
-import type { TelegramClient } from "./client";
-import { cleanupFile, downloadTelegramFile } from "./media";
-import { startStreaming } from "./streaming";
-import type { IncomingMessage } from "./types";
+import { mkdirSync } from 'node:fs';
+import type { Config } from '../config/schema';
+import type { SessionRegistry } from '../daemon/session-registry';
+import { getLogger } from '../logger';
+import type { TelegramClient } from './client';
+import { cleanupFile, downloadTelegramFile } from './media';
+import { startStreaming } from './streaming';
+import type { IncomingMessage } from './types';
 
 export interface HandlerOptions {
   config: Config;
@@ -45,11 +45,11 @@ export async function handleMessage(message: IncomingMessage, options: HandlerOp
 
   // 1. Filter by allowed users
   if (!isUserAllowed(message.userId, config)) {
-    log.debug({ userId: message.userId }, "Ignoring message from unauthorized user");
+    log.debug({ userId: message.userId }, 'Ignoring message from unauthorized user');
     return;
   }
 
-  log.info({ chatId: message.chatId, userId: message.userId, type: message.type }, "Processing incoming message");
+  log.info({ chatId: message.chatId, userId: message.userId, type: message.type }, 'Processing incoming message');
 
   // 2. Download media files if present
   const filePaths = await downloadMediaFiles(message, client, configDir);
@@ -61,7 +61,7 @@ export async function handleMessage(message: IncomingMessage, options: HandlerOp
   if (!sessionRegistry) {
     await client.sendMessage(
       message.chatId,
-      `Received: ${message.type} message${message.text ? ` — "${message.text.substring(0, 100)}"` : ""}\n\n_Bot daemon is initializing…_`,
+      `Received: ${message.type} message${message.text ? ` — "${message.text.substring(0, 100)}"` : ''}\n\n_Bot daemon is initializing…_`,
     );
     return;
   }
@@ -75,7 +75,7 @@ export async function handleMessage(message: IncomingMessage, options: HandlerOp
 
     // 7. Build attachments section for the prompt
     const attachmentsSection =
-      filePaths.length > 0 ? `\n\nAttachments:\n${filePaths.map((p) => `- ${p}`).join("\n")}` : "";
+      filePaths.length > 0 ? `\n\nAttachments:\n${filePaths.map((p) => `- ${p}`).join('\n')}` : '';
 
     // 8. Send to pi session (responses come through session events)
     await session.prompt(`[telegram-kb] ${prompt}${attachmentsSection}`);
@@ -84,9 +84,9 @@ export async function handleMessage(message: IncomingMessage, options: HandlerOp
     streaming.stop();
   } catch (err) {
     streaming.stop();
-    log.error({ err, chatId: message.chatId }, "Error processing message");
+    log.error({ err, chatId: message.chatId }, 'Error processing message');
 
-    await client.sendMessage(message.chatId, "Sorry, an error occurred while processing your message.");
+    await client.sendMessage(message.chatId, 'Sorry, an error occurred while processing your message.');
   } finally {
     // 10. Clean up temp files
     for (const fp of filePaths) {
@@ -122,7 +122,7 @@ async function downloadMediaFiles(
     const fileUrl = await client.getFileUrl(fileId);
     if (!fileUrl) continue;
 
-    const ext = message.type === "photo" ? ".jpg" : ".bin";
+    const ext = message.type === 'photo' ? '.jpg' : '.bin';
 
     const localPath = await downloadTelegramFile(fileUrl, ext, tempDir);
     if (localPath) {
@@ -147,13 +147,13 @@ function buildPrompt(message: IncomingMessage, filePaths: string[]): string {
     parts.push(`[Attached ${filePaths.length} file(s)]`);
   }
 
-  if (message.type === "photo") {
-    parts.push("[User sent a photo]");
-  } else if (message.type === "voice") {
-    parts.push("[User sent a voice message (audio file attached)]");
-  } else if (message.type === "document" && !message.text) {
-    parts.push("[User sent a file]");
+  if (message.type === 'photo') {
+    parts.push('[User sent a photo]');
+  } else if (message.type === 'voice') {
+    parts.push('[User sent a voice message (audio file attached)]');
+  } else if (message.type === 'document' && !message.text) {
+    parts.push('[User sent a file]');
   }
 
-  return parts.join("\n");
+  return parts.join('\n');
 }

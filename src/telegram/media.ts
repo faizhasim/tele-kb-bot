@@ -7,10 +7,10 @@
  * @module
  */
 
-import { randomUUID } from "node:crypto";
-import { mkdirSync, unlinkSync } from "node:fs";
-import { join } from "node:path";
-import { getLogger } from "../logger";
+import { randomUUID } from 'node:crypto';
+import { mkdirSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { getLogger } from '../logger';
 
 /** Maximum download file size in bytes (20 MB). */
 const MAX_DOWNLOAD_SIZE = 20 * 1024 * 1024;
@@ -34,14 +34,14 @@ export async function downloadTelegramFile(url: string, ext: string, tempDir: st
     const response = await fetch(url);
 
     if (!response.ok) {
-      log.warn({ url, status: response.status }, "Failed to download Telegram file");
+      log.warn({ url, status: response.status }, 'Failed to download Telegram file');
       return undefined;
     }
 
     // Check content length
-    const contentLength = response.headers.get("content-length");
+    const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > MAX_DOWNLOAD_SIZE) {
-      log.warn({ url, size: contentLength }, "File exceeds max download size");
+      log.warn({ url, size: contentLength }, 'File exceeds max download size');
       return undefined;
     }
 
@@ -52,10 +52,10 @@ export async function downloadTelegramFile(url: string, ext: string, tempDir: st
     // Write using Bun.write for performance
     await Bun.write(filePath, buffer);
 
-    log.debug({ filePath, size: buffer.length }, "Downloaded Telegram file");
+    log.debug({ filePath, size: buffer.length }, 'Downloaded Telegram file');
     return filePath;
   } catch (err) {
-    log.warn({ err, url }, "Failed to download Telegram file");
+    log.warn({ err, url }, 'Failed to download Telegram file');
     return undefined;
   }
 }
@@ -65,32 +65,32 @@ export async function downloadTelegramFile(url: string, ext: string, tempDir: st
  */
 export function mimeToExtension(mimeType: string): string {
   const map: Record<string, string> = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/gif": ".gif",
-    "image/webp": ".webp",
-    "application/pdf": ".pdf",
-    "text/plain": ".txt",
-    "application/json": ".json",
-    "audio/ogg": ".ogg",
-    "audio/mpeg": ".mp3",
-    "audio/mp4": ".m4a",
-    "video/mp4": ".mp4",
-    "application/zip": ".zip",
-    "application/gzip": ".gz",
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/gif': '.gif',
+    'image/webp': '.webp',
+    'application/pdf': '.pdf',
+    'text/plain': '.txt',
+    'application/json': '.json',
+    'audio/ogg': '.ogg',
+    'audio/mpeg': '.mp3',
+    'audio/mp4': '.m4a',
+    'video/mp4': '.mp4',
+    'application/zip': '.zip',
+    'application/gzip': '.gz',
   };
-  return map[mimeType] ?? ".bin";
+  return map[mimeType] ?? '.bin';
 }
 
 /**
  * Get file extension from a file name.
  */
 export function getExtension(fileName: string): string {
-  const dotIndex = fileName.lastIndexOf(".");
+  const dotIndex = fileName.lastIndexOf('.');
   if (dotIndex > 0) {
     return fileName.substring(dotIndex).toLowerCase();
   }
-  return ".bin";
+  return '.bin';
 }
 
 /**
@@ -109,7 +109,7 @@ export function cleanupFile(filePath: string): void {
  */
 export function cleanupTempDir(tempDir: string): void {
   try {
-    const { readdirSync } = require("node:fs") as typeof import("node:fs");
+    const { readdirSync } = require('node:fs') as typeof import('node:fs');
     const files = readdirSync(tempDir);
     for (const file of files) {
       try {

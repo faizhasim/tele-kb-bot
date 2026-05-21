@@ -7,8 +7,8 @@
  * @module
  */
 
-import { join } from "node:path";
-import type { AgentSession } from "@mariozechner/pi-coding-agent";
+import { join } from 'node:path';
+import type { AgentSession } from '@mariozechner/pi-coding-agent';
 import {
   AuthStorage,
   createAgentSessionFromServices,
@@ -16,11 +16,10 @@ import {
   ModelRegistry,
   SessionManager,
   SettingsManager,
-} from "@mariozechner/pi-coding-agent";
-import type { Config } from "../config/schema";
-import { getLogger } from "../logger";
-import { createExtensionFactories } from "./extensions";
-import { registerProvider } from "./provider";
+} from '@mariozechner/pi-coding-agent';
+import type { Config } from '../config/schema';
+import { getLogger } from '../logger';
+import { createExtensionFactories } from './extensions';
 
 /**
  * Create an AgentSession for a specific Telegram chat.
@@ -39,24 +38,21 @@ export async function createPiSession(
   cwd: string = configDir,
 ): Promise<AgentSession> {
   const log = getLogger();
-  const agentDir = join(configDir, "agents");
+  const agentDir = join(configDir, 'agents');
 
   // 1. Auth storage — API keys from <config_dir>/agents/auth.json
-  const authStorage = AuthStorage.create(join(agentDir, "auth.json"));
+  const authStorage = AuthStorage.create(join(agentDir, 'auth.json'));
   authStorage.reload();
 
-  // 2. Model registry — custom models from <config_dir>/agents/models.json
-  const modelRegistry = ModelRegistry.create(authStorage, join(agentDir, "models.json"));
+  // 2. Model registry — load built-in models including Opencode Go
+  const modelRegistry = ModelRegistry.create(authStorage, join(agentDir, 'models.json'));
   modelRegistry.refresh();
 
-  // 3. Register Opencode Go provider
-  registerProvider(modelRegistry);
-
-  // 4. Settings manager
+  // 3. Settings manager
   const settingsManager = SettingsManager.create(cwd, agentDir);
 
-  // 5. Create runtime services with compiled-in extensions
-  log.debug({ agentDir }, "Creating pi SDK services");
+  // 4. Create runtime services with compiled-in extensions
+  log.debug({ agentDir }, 'Creating pi SDK services');
   const services = await createAgentSessionServices({
     cwd,
     agentDir,
@@ -72,29 +68,30 @@ export async function createPiSession(
     },
   });
 
-  // 6. Resolve the model
+  // 6. Resolve the model from config
+  const providerName = config.llm.provider;
   const modelId = config.llm.model;
-  const model = modelRegistry.find("opencode-go", modelId);
+  const model = modelRegistry.find(providerName, modelId);
 
   if (!model) {
     throw new Error(
-      `Model "${modelId}" not found for provider "opencode-go". ` +
-        "Make sure the provider is registered and models.json is correct. " +
+      `Model "${modelId}" not found for provider "${providerName}". ` +
+        'Make sure the provider is registered. ' +
         "Run 'tele-kb-bot setup' to configure.",
     );
   }
 
-  log.info({ model: `${modelId}`, thinking: config.llm.reasoning }, "Creating pi session");
+  log.info({ model: `${modelId}`, thinking: config.llm.reasoning }, 'Creating pi session');
 
   // 7. Session manager for persistence
-  const sessionManager = SessionManager.create(join(agentDir, "sessions/"));
+  const sessionManager = SessionManager.create(join(agentDir, 'sessions/'));
 
   // 8. Create the AgentSession
   const { session } = await createAgentSessionFromServices({
     services,
     sessionManager,
     model,
-    thinkingLevel: (config.llm.reasoning as never) ?? "high",
+    thinkingLevel: config.llm.reasoning,
   });
 
   return session;

@@ -7,14 +7,14 @@
  * @module
  */
 
-import { readFile } from "node:fs/promises";
-import { Data, Effect, pipe } from "effect";
-import { createCLILogger } from "../logger";
-import { splitIntoChunks, truncateCaption } from "./chunking";
+import { readFile } from 'node:fs/promises';
+import { Data, Effect, pipe } from 'effect';
+import { createCLILogger } from '../logger';
+import { splitIntoChunks, truncateCaption } from './chunking';
 
 // ─── Constants ───────────────────────────────────────────────────────
 
-const TELEGRAM_API = "https://api.telegram.org/bot";
+const TELEGRAM_API = 'https://api.telegram.org/bot';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -32,7 +32,7 @@ interface VerifyResult {
 
 // ─── Tagged Errors ──────────────────────────────────────────────────
 
-class TelegramApiError extends Data.TaggedError("TelegramApiError")<{
+class TelegramApiError extends Data.TaggedError('TelegramApiError')<{
   readonly message: string;
   readonly errorCode?: number;
   readonly description?: string;
@@ -42,7 +42,7 @@ type TelegramError = TelegramApiError;
 
 // ─── Logger ─────────────────────────────────────────────────────────
 
-const log = createCLILogger("telegram-client");
+const log = createCLILogger('telegram-client');
 
 // ─── Internal HTTP Helpers ───────────────────────────────────────────
 
@@ -67,7 +67,7 @@ const apiGet = <T>(
 
       if (!data.ok) {
         throw new TelegramApiError({
-          message: data.description ?? "Unknown Telegram API error",
+          message: data.description ?? 'Unknown Telegram API error',
           errorCode: data.error_code,
           description: data.description,
         });
@@ -94,15 +94,15 @@ const apiPostJson = <T>(
   Effect.tryPromise({
     try: async () => {
       const response = await fetch(`${TELEGRAM_API}${botToken}/${method}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const data = (await response.json()) as { ok: boolean; result?: T; description?: string; error_code?: number };
 
       if (!data.ok) {
         throw new TelegramApiError({
-          message: data.description ?? "Unknown Telegram API error",
+          message: data.description ?? 'Unknown Telegram API error',
           errorCode: data.error_code,
           description: data.description,
         });
@@ -135,14 +135,14 @@ const apiPostMultipart = <T>(
       }
 
       const response = await fetch(`${TELEGRAM_API}${botToken}/${method}`, {
-        method: "POST",
+        method: 'POST',
         body: formData,
       });
       const data = (await response.json()) as { ok: boolean; result?: T; description?: string; error_code?: number };
 
       if (!data.ok) {
         throw new TelegramApiError({
-          message: data.description ?? "Unknown Telegram API error",
+          message: data.description ?? 'Unknown Telegram API error',
           errorCode: data.error_code,
           description: data.description,
         });
@@ -206,18 +206,18 @@ const sendText = (
     if (options?.disablePreview) {
       body.link_preview_options = { is_disabled: true };
     }
-    return apiPostJson<TelegramMessage>(botToken, "sendMessage", body);
+    return apiPostJson<TelegramMessage>(botToken, 'sendMessage', body);
   };
 
   return pipe(
     Effect.all(chunks.map((chunk, i) => sendOneChunk(chunk, i))),
     Effect.map((messages) => {
       const last = messages[messages.length - 1];
-      if (!last) return { ok: false, error: "No messages sent" };
+      if (!last) return { ok: false, error: 'No messages sent' };
       return { ok: true, messageId: last.message_id };
     }),
     Effect.catchAll((err) => {
-      log.error({ err, chatId }, "sendText failed");
+      log.error({ err, chatId }, 'sendText failed');
       return Effect.succeed({ ok: false, error: err.message } as SendResult);
     }),
   );
@@ -256,10 +256,10 @@ const sendDocument = (
       }
       return fields;
     }),
-    Effect.flatMap((fields) => apiPostMultipart<TelegramMessage>(botToken, "sendDocument", fields)),
+    Effect.flatMap((fields) => apiPostMultipart<TelegramMessage>(botToken, 'sendDocument', fields)),
     Effect.map((msg) => ({ ok: true, messageId: msg.message_id }) as SendResult),
     Effect.catchAll((err) => {
-      log.error({ err, chatId, filePath }, "sendDocument failed");
+      log.error({ err, chatId, filePath }, 'sendDocument failed');
       return Effect.succeed({ ok: false, error: err.message } as SendResult);
     }),
   );
@@ -267,27 +267,27 @@ const sendDocument = (
 // ─── Send Chat Action ────────────────────────────────────────────────
 
 type ChatAction =
-  | "typing"
-  | "upload_document"
-  | "upload_photo"
-  | "record_video"
-  | "upload_video"
-  | "record_voice"
-  | "upload_voice";
+  | 'typing'
+  | 'upload_document'
+  | 'upload_photo'
+  | 'record_video'
+  | 'upload_video'
+  | 'record_voice'
+  | 'upload_voice';
 
 /**
  * Send a chat action (typing indicator, upload status, etc.).
  * Silently fails — chat actions are best-effort.
  */
-const sendChatAction = (botToken: string, chatId: number, action: ChatAction = "typing"): Effect.Effect<void> =>
+const sendChatAction = (botToken: string, chatId: number, action: ChatAction = 'typing'): Effect.Effect<void> =>
   pipe(
-    apiPostJson<boolean>(botToken, "sendChatAction", {
+    apiPostJson<boolean>(botToken, 'sendChatAction', {
       chat_id: chatId,
       action,
     }),
     Effect.as(undefined),
     Effect.catchAll((err) => {
-      log.debug({ err, chatId, action }, "Failed to send chat action (best-effort)");
+      log.debug({ err, chatId, action }, 'Failed to send chat action (best-effort)');
       return Effect.void;
     }),
   );
@@ -299,7 +299,7 @@ const sendChatAction = (botToken: string, chatId: number, action: ChatAction = "
  */
 const verifyToken = (botToken: string): Effect.Effect<VerifyResult, never> =>
   pipe(
-    apiGet<TelegramUser>(botToken, "getMe"),
+    apiGet<TelegramUser>(botToken, 'getMe'),
     Effect.map((user) => ({ ok: true, botName: user.first_name })),
     Effect.catchAll((err) => Effect.succeed({ ok: false, error: err.message } as VerifyResult)),
   );

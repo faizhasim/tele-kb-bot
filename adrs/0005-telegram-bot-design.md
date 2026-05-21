@@ -10,11 +10,11 @@ decision-makers: Mohd Faiz Hasim
 
 tele-kb-bot needs to receive messages from Telegram, convert them into pi session prompts, and send responses back. How should we structure the Telegram integration — polling method, message handling, media processing, streaming, and error recovery?
 
-The bot is a user-facing service running on a Mac Mini at home. It must handle text, photos, documents, and voice messages; debounce media groups; show typing indicators during processing; and chunk long responses at Telegram's 4096-character limit.
+The bot is a user-facing service running on a machine at home. It must handle text, photos, documents, and voice messages; debounce media groups; show typing indicators during processing; and chunk long responses at Telegram's 4096-character limit.
 
 ## Decision Drivers
 
-- Long-polling (not webhook) — the Mac Mini is behind NAT with no static IP for webhook callbacks
+- Long-polling (not webhook) — the machine is behind NAT with no static IP for webhook callbacks
 - GrammY framework — mature, pure JS, compiles well with `bun build --compile`
 - Media handling must be robust — photos, documents, and voice messages downloaded and cleaned up after processing
 - Streaming preview via `sendChatAction("typing")` — users need feedback that the bot is working
@@ -73,7 +73,7 @@ Verified by sending messages from an authorized Telegram account and inspecting 
 
 - Good, because webhooks are more efficient than polling (no constant polling requests)
 - Good, because grammY supports webhook mode natively
-- Bad, because webhooks require a public HTTPS endpoint — the Mac Mini is on a home network behind NAT
+- Bad, because webhooks require a public HTTPS endpoint — the machine is on a home network behind NAT
 - Bad, because webhooks need HTTPS certificate management and a tunnel (ngrok/Cloudflare Tunnel)
 - Bad, because adds operational complexity that polling doesn't need
 

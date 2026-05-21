@@ -6,31 +6,31 @@
  * @module
  */
 
-import type { Config } from "./schema";
+import type { Config } from './schema';
 
 /**
  * Return a complete Config object with all defaults applied.
  */
 const getDefaultConfig = (): Config => ({
   telegram: {
-    bot_token: "",
+    bot_token: '',
     allowed_user_ids: [],
   },
   llm: {
-    provider: "opencode-go",
-    model: "deepseek-v4-flash",
-    reasoning: "high",
+    provider: 'opencode-go',
+    model: 'deepseek-v4-flash',
+    reasoning: 'high',
   },
   memory: {
     enabled: true,
     auto_inject: true,
     search: {
       max_results: 5,
-      mode: "keyword",
+      mode: 'keyword',
     },
     qmd: {
       enabled: false,
-      binary_path: "qmd",
+      binary_path: 'qmd',
     },
   },
   bot: {
@@ -58,10 +58,10 @@ const deepMerge = (target: Record<string, unknown>, source: Record<string, unkno
     if (srcVal === undefined) continue;
     const tgtVal = target[key];
     if (
-      typeof srcVal === "object" &&
+      typeof srcVal === 'object' &&
       srcVal !== null &&
       !Array.isArray(srcVal) &&
-      typeof tgtVal === "object" &&
+      typeof tgtVal === 'object' &&
       tgtVal !== null &&
       !Array.isArray(tgtVal)
     ) {
@@ -83,7 +83,7 @@ const validateSemantic = (config: Config): ReadonlyArray<string> => {
     errors.push("telegram.bot_token: Required. Run 'tele-kb-bot setup' first.");
   }
   if (config.telegram.allowed_user_ids.length === 0 && config.telegram.bot_token) {
-    errors.push("telegram.allowed_user_ids: At least one user ID is required.");
+    errors.push('telegram.allowed_user_ids: At least one user ID is required.');
   }
   return errors;
 };

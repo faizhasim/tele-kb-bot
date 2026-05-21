@@ -7,11 +7,11 @@
  * @module
  */
 
-import { runCLI } from "./cli/main";
+import { runCLI } from './cli/main';
 
-process.title = "tele-kb-bot";
+process.title = 'tele-kb-bot';
 
 runCLI(process.argv.slice(2)).catch((err: unknown) => {
-  console.error("Fatal error:", err instanceof Error ? err.message : String(err));
+  console.error('Fatal error:', err instanceof Error ? err.message : String(err));
   process.exit(1);
 });

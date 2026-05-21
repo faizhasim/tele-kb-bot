@@ -8,8 +8,8 @@
  * @module
  */
 
-import { getLogger } from "../logger";
-import type { TelegramClient } from "./client";
+import { getLogger } from '../logger';
+import type { TelegramClient } from './client';
 
 /** Interval between typing indicator updates in ms. */
 const TYPING_INTERVAL_MS = 4000;
@@ -74,7 +74,7 @@ export class StreamingManager {
   }
 
   private sendTyping(): void {
-    this.client.sendChatAction(this.chatId, "typing").catch(() => {
+    this.client.sendChatAction(this.chatId, 'typing').catch(() => {
       // Best-effort — typing indicators may fail silently
     });
   }

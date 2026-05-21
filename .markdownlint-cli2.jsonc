@@ -8,5 +8,5 @@
     "MD060": false,
     "MD041": false
   },
-  "ignores": ["node_modules", "dist", "INSTRUCTIONS.md", "PLANNING.md"]
+  "ignores": ["node_modules", "dist", "INSTRUCTIONS.md", "PLANNING.md", "TODO.md"]
 }

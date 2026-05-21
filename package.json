@@ -6,8 +6,8 @@
   "private": true,
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build": "bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile dist/tele-kb-bot",
-    "build:intel": "bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile dist/tele-kb-bot-intel",
+    "build": "bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile dist/tele-kb-bot && cp package.json dist/",
+    "build:intel": "bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile dist/tele-kb-bot-intel && cp package.json dist/",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:bun": "bun test",
@@ -28,8 +28,9 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
+    "@clack/prompts": "^1.4.0",
     "@effect/platform": "^0.96.1",
-    "@effect/platform-node": "^0.106.0",
+    "@effect/platform-bun": "^0.89.0",
     "@effect/schema": "^0.75.5",
     "@mariozechner/pi-ai": "^0.73.1",
     "@mariozechner/pi-coding-agent": "^0.73.1",

@@ -38,7 +38,7 @@ export interface ContextSections {
 
 /** Memory file names */
 export const MEMORY_FILES = {
-  MEMORY: "MEMORY.md",
-  SCRATCHPAD: "SCRATCHPAD.md",
-  DAILY_PREFIX: "", // YYYY-MM-DD.md
+  MEMORY: 'MEMORY.md',
+  SCRATCHPAD: 'SCRATCHPAD.md',
+  DAILY_PREFIX: '', // YYYY-MM-DD.md
 } as const;

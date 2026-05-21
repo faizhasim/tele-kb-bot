@@ -7,18 +7,18 @@
  * @module
  */
 
-import { join } from "node:path";
-import { FileSystem } from "@effect/platform/FileSystem";
-import { Effect } from "effect";
-import type { IndexState } from "./search";
-import { indexDocuments, search } from "./search";
-import type { SearchResult } from "./types";
+import { join } from 'node:path';
+import { FileSystem } from '@effect/platform/FileSystem';
+import { Effect } from 'effect';
+import type { IndexState } from './search';
+import { indexDocuments, search } from './search';
+import type { SearchResult } from './types';
 
 // ─── File Names ──────────────────────────────────────────────────────
 
-const MEMORY_FILE = "MEMORY.md";
-const SCRATCHPAD_FILE = "SCRATCHPAD.md";
-const DAILY_DIR = "daily";
+const MEMORY_FILE = 'MEMORY.md';
+const SCRATCHPAD_FILE = 'SCRATCHPAD.md';
+const DAILY_DIR = 'daily';
 
 // ─── Path Helpers ───────────────────────────────────────────────────
 
@@ -28,13 +28,13 @@ const dailyPath = (baseDir: string, date: string) => join(baseDir, DAILY_DIR, `$
 
 const todayDate = (): string => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 const yesterdayDate = (): string => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 // ─── Read Functions ──────────────────────────────────────────────────
@@ -43,8 +43,8 @@ const readSafe = (path: string): Effect.Effect<string, never, FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem;
     const exists = yield* fs.exists(path).pipe(Effect.catchAll(() => Effect.succeed(false)));
-    if (!exists) return "";
-    return yield* fs.readFileString(path).pipe(Effect.catchAll(() => Effect.succeed("")));
+    if (!exists) return '';
+    return yield* fs.readFileString(path).pipe(Effect.catchAll(() => Effect.succeed('')));
   });
 
 const readMemory = (baseDir: string): Effect.Effect<string, never, FileSystem> => readSafe(memoryPath(baseDir));
@@ -65,8 +65,8 @@ const appendToFile = (path: string, content: string): Effect.Effect<void, never,
   Effect.gen(function* () {
     const fs = yield* FileSystem;
     const exists = yield* fs.exists(path).pipe(Effect.catchAll(() => Effect.succeed(false)));
-    const prefix = exists ? "\n" : "";
-    yield* fs.writeFileString(path, prefix + content, { flag: "a" }).pipe(Effect.catchAll(() => Effect.void));
+    const prefix = exists ? '\n' : '';
+    yield* fs.writeFileString(path, prefix + content, { flag: 'a' }).pipe(Effect.catchAll(() => Effect.void));
   });
 
 const overwriteFile = (path: string, content: string): Effect.Effect<void, never, FileSystem> =>

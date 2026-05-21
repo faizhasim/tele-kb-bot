@@ -36,7 +36,7 @@ export function splitIntoChunks(text: string, maxLength: number = TELEGRAM_CHAR_
     }
 
     // Try to split at paragraph boundary (double newline)
-    const paragraphSplit = findSplitPoint(remaining, maxLength, "\n\n");
+    const paragraphSplit = findSplitPoint(remaining, maxLength, '\n\n');
 
     // Try to split at sentence boundary (period + space or newline)
     const sentenceSplit = paragraphSplit > 0 ? paragraphSplit : findSplitPoint(remaining, maxLength, /[.!?]\s/g);
@@ -65,7 +65,7 @@ export function splitIntoChunks(text: string, maxLength: number = TELEGRAM_CHAR_
 function findSplitPoint(text: string, maxLength: number, delimiter: string | RegExp): number {
   const searchText = text.substring(0, maxLength);
 
-  if (typeof delimiter === "string") {
+  if (typeof delimiter === 'string') {
     const lastIndex = searchText.lastIndexOf(delimiter);
     if (lastIndex > 0) {
       return lastIndex + delimiter.length;
@@ -74,7 +74,7 @@ function findSplitPoint(text: string, maxLength: number, delimiter: string | Reg
     // RegExp — find last match
     let lastIndex = -1;
     let match: RegExpExecArray | null;
-    const regex = new RegExp(delimiter.source, `g${delimiter.flags.includes("m") ? "m" : ""}`);
+    const regex = new RegExp(delimiter.source, `g${delimiter.flags.includes('m') ? 'm' : ''}`);
     for (match = regex.exec(searchText); match; match = regex.exec(searchText)) {
       if (match.index > 0 && match.index <= maxLength) {
         lastIndex = match.index + match[0].length;
@@ -95,7 +95,7 @@ function findSplitPoint(text: string, maxLength: number, delimiter: string | Reg
 export function truncateWithMarker(
   text: string,
   maxLength: number = TELEGRAM_CHAR_LIMIT,
-  marker: string = "\n\n_[continued]_",
+  marker: string = '\n\n_[continued]_',
 ): string {
   if (text.length <= maxLength) return text;
 

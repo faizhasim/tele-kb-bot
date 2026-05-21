@@ -147,13 +147,19 @@ Two compiled-in extension factories:
 
 2. **Memory tools** — `memory_write`, `memory_read`, `scratchpad`, `memory_search` tools that delegate to the memory module (`src/memory/`). Adapted from pi-memory concepts (MIT, credited in source).
 
-### Provider Registration
+### Provider Registration (Built-In)
 
-The Opencode Go provider is registered programmatically after creating the ModelRegistry:
+Opcencode Go is a **built-in provider** in the pi SDK (`@mariozechner/pi-coding-agent` v0.73+). The SDK ships with 12 Opencode Go models (`deepseek-v4-flash`, `kimi-k2.6`, etc.) pre-configured with the correct API type (`openai-completions`) and base URL (`https://opencode.ai/zen/go/v1`).
+
+No custom `registerProvider` call is needed. The API key is resolved from `auth.json` (written by `tele-kb-bot setup`) automatically via the `AuthStorage` linked to the `ModelRegistry`.
+
+For reference, the built-in definition is equivalent to:
 
 ```typescript
+// Built-in — not called manually
 modelRegistry.registerProvider("opencode-go", {
-  baseUrl: "https://api.opencode.go/v1",
+  baseUrl: "https://opencode.ai/zen/go/v1",
+  api: "openai-completions",
   models: [
     {
       id: "deepseek-v4-flash",
@@ -167,8 +173,6 @@ modelRegistry.registerProvider("opencode-go", {
   ],
 });
 ```
-
-The API key is resolved from `auth.json` (written by `tele-kb-bot setup`) or the `OPENER_GO_API_KEY` environment variable, whichever is available.
 
 ### Related Decisions
 

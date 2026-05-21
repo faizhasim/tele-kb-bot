@@ -7,17 +7,17 @@
  * @module
  */
 
-import { execSync } from "node:child_process";
-import { existsSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { ensureConfigDirs, resolveConfigDir } from "../config/paths";
-import { BINARY_NAME } from "../constants";
-import { createCLILogger } from "../logger";
-import type { CLIOptions } from "./main";
+import { execSync } from 'node:child_process';
+import { existsSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { ensureConfigDirsSync, resolveConfigDir } from '../config/paths';
+import { BINARY_NAME } from '../constants';
+import { createCLILogger } from '../logger';
+import type { CLIOptions } from './main';
 
-const PLIST_LABEL = "com.tele-kb-bot";
-const LAUNCH_AGENTS_DIR = join(homedir(), "Library", "LaunchAgents");
+const PLIST_LABEL = 'com.tele-kb-bot';
+const LAUNCH_AGENTS_DIR = join(homedir(), 'Library', 'LaunchAgents');
 const PLIST_PATH = join(LAUNCH_AGENTS_DIR, `${PLIST_LABEL}.plist`);
 
 /**
@@ -69,9 +69,9 @@ function generatePlist(configDir: string, binaryPath: string): string {
 function resolveBinaryPath(): string {
   // When running as compiled binary, process.argv[0] is the binary path
   const currentExe = process.argv[0];
-  if (currentExe && (currentExe.includes("tele-kb-bot") || currentExe.includes("bun"))) {
+  if (currentExe && (currentExe.includes('tele-kb-bot') || currentExe.includes('bun'))) {
     // If it's a compiled binary, use its path directly
-    if (!currentExe.includes("bun")) {
+    if (!currentExe.includes('bun')) {
       return currentExe;
     }
   }
@@ -80,7 +80,7 @@ function resolveBinaryPath(): string {
   const candidates = [
     `/opt/homebrew/bin/${BINARY_NAME}`,
     `/usr/local/bin/${BINARY_NAME}`,
-    join(homedir(), ".local", "bin", BINARY_NAME),
+    join(homedir(), '.local', 'bin', BINARY_NAME),
   ];
 
   for (const candidate of candidates) {
@@ -108,9 +108,9 @@ export async function installCommand(_options: CLIOptions): Promise<void> {
   const binaryPath = resolveBinaryPath();
 
   // Ensure config dir and logs subdir exist
-  ensureConfigDirs(configDir);
+  ensureConfigDirsSync(configDir);
 
-  log.info({ binaryPath, plistPath: PLIST_PATH }, "Installing launchd service");
+  log.info({ binaryPath, plistPath: PLIST_PATH }, 'Installing launchd service');
 
   // Generate and write plist
   const plistContent = generatePlist(configDir, binaryPath);
@@ -124,33 +124,33 @@ export async function installCommand(_options: CLIOptions): Promise<void> {
   console.log();
 
   // Offer to load the service
-  const loadService = await confirm("Load the service now? (launchctl bootstrap)", true);
+  const loadService = await confirm('Load the service now? (launchctl bootstrap)', true);
   if (loadService) {
     try {
       const uid = process.getuid?.() ?? 0;
       const bootstrapCmd = `launchctl bootstrap gui/${uid} "${PLIST_PATH}"`;
-      log.info({ cmd: bootstrapCmd }, "Loading launchd service");
-      execSync(bootstrapCmd, { stdio: "inherit" });
-      console.log("  ✓ Service loaded successfully.");
+      log.info({ cmd: bootstrapCmd }, 'Loading launchd service');
+      execSync(bootstrapCmd, { stdio: 'inherit' });
+      console.log('  ✓ Service loaded successfully.');
     } catch (_err) {
       // The service may already be loaded — try bootout first, then bootstrap
       try {
         const uid = process.getuid?.() ?? 0;
-        execSync(`launchctl bootout gui/${uid}/${PLIST_LABEL} 2>/dev/null || true`, { stdio: "ignore" });
+        execSync(`launchctl bootout gui/${uid}/${PLIST_LABEL} 2>/dev/null || true`, { stdio: 'ignore' });
         execSync(`launchctl bootstrap gui/${uid} "${PLIST_PATH}"`, {
-          stdio: "inherit",
+          stdio: 'inherit',
         });
-        console.log("  ✓ Service reloaded successfully.");
+        console.log('  ✓ Service reloaded successfully.');
       } catch (err2) {
         console.error(`  ✗ Failed to load service: ${err2 instanceof Error ? err2.message : String(err2)}`);
-        console.error("    You can load it manually:");
+        console.error('    You can load it manually:');
         console.error(`    launchctl bootstrap gui/$(id -u) "${PLIST_PATH}"`);
       }
     }
   }
 
   console.log();
-  console.log("  Management commands:");
+  console.log('  Management commands:');
   console.log(`    Start:   launchctl bootstrap gui/$(id -u) "${PLIST_PATH}"`);
   console.log(`    Stop:    launchctl bootout gui/$(id -u)/${PLIST_LABEL}`);
   console.log(`    Status:  launchctl list | grep ${PLIST_LABEL}`);
@@ -163,18 +163,18 @@ export async function installCommand(_options: CLIOptions): Promise<void> {
  * Simple confirm helper (duplicated from setup.ts to avoid circular deps).
  */
 async function confirm(question: string, defaultYes = true): Promise<boolean> {
-  const { createInterface } = await import("node:readline");
+  const { createInterface } = await import('node:readline');
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
     terminal: true,
   });
-  const hint = defaultYes ? "[Y/n]" : "[y/N]";
+  const hint = defaultYes ? '[Y/n]' : '[y/N]';
   return new Promise<boolean>((resolve) => {
     rl.question(`  ${question} ${hint} `, (answer: string) => {
       rl.close();
-      if (answer.trim() === "") resolve(defaultYes);
-      else resolve(answer.trim().toLowerCase() === "y" || answer.trim().toLowerCase() === "yes");
+      if (answer.trim() === '') resolve(defaultYes);
+      else resolve(answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes');
     });
   });
 }

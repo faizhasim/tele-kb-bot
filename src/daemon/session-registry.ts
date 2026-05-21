@@ -7,10 +7,10 @@
  * @module
  */
 
-import type { AgentSession } from "@mariozechner/pi-coding-agent";
-import type { Config } from "../config/schema";
-import { createCLILogger } from "../logger";
-import { createPiSession } from "../pi/session-factory";
+import type { AgentSession } from '@mariozechner/pi-coding-agent';
+import type { Config } from '../config/schema';
+import { createCLILogger } from '../logger';
+import { createPiSession } from '../pi/session-factory';
 
 /** Default idle timeout in milliseconds (30 minutes). */
 const DEFAULT_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
@@ -44,7 +44,7 @@ const createSessionRegistry = (
   configDir: string,
   idleTimeoutMs: number = DEFAULT_IDLE_TIMEOUT_MS,
 ): SessionRegistry => {
-  const log = createCLILogger("tele-kb-bot");
+  const log = createCLILogger('tele-kb-bot');
   const sessions = new Map<number, SessionEntry>();
   let disposed = false;
   let evictionTimer: ReturnType<typeof setInterval> | null = null;
@@ -54,7 +54,7 @@ const createSessionRegistry = (
     evictionTimer = setInterval(
       () => {
         evictIdle().catch((err: unknown) => {
-          log.warn({ err }, "Error during session idle eviction");
+          log.warn({ err }, 'Error during session idle eviction');
         });
       },
       Math.min(EVICTION_INTERVAL_MS, idleTimeoutMs / 2),
@@ -78,7 +78,7 @@ const createSessionRegistry = (
       }
     }
     if (evictChatIds.length === 0) return;
-    log.debug({ chatIds: evictChatIds, count: evictChatIds.length }, "Evicting idle sessions");
+    log.debug({ chatIds: evictChatIds, count: evictChatIds.length }, 'Evicting idle sessions');
     // Use remove (via the outer scope)
     for (const chatId of evictChatIds) {
       sessions.delete(chatId);
@@ -91,7 +91,7 @@ const createSessionRegistry = (
       existing.lastUsed = Date.now();
       return existing.session;
     }
-    log.info({ chatId }, "Creating new pi session for chat");
+    log.info({ chatId }, 'Creating new pi session for chat');
     const session = await createPiSession(config, configDir);
     sessions.set(chatId, {
       session,
@@ -116,9 +116,9 @@ const createSessionRegistry = (
     if (entry) {
       try {
         entry.session.abort();
-        log.debug({ chatId }, "Aborted session turn");
+        log.debug({ chatId }, 'Aborted session turn');
       } catch (err) {
-        log.warn({ err, chatId }, "Failed to abort session turn");
+        log.warn({ err, chatId }, 'Failed to abort session turn');
       }
     }
   };
@@ -130,7 +130,7 @@ const createSessionRegistry = (
       try {
         await entry.session.dispose();
       } catch (err) {
-        log.warn({ err, chatId }, "Error disposing session");
+        log.warn({ err, chatId }, 'Error disposing session');
       }
     }
   };
@@ -144,7 +144,7 @@ const createSessionRegistry = (
     }
     await Promise.all(disposals);
     sessions.clear();
-    log.info("All sessions disposed");
+    log.info('All sessions disposed');
   };
 
   const activeCount = (): number => sessions.size;

@@ -6,8 +6,8 @@
  * @module
  */
 
-import { Context, Effect, Layer } from "effect";
-import pino from "pino";
+import { Context, Effect, Layer } from 'effect';
+import pino from 'pino';
 
 // ─── Service Tag ────────────────────────────────────────────────────
 
@@ -19,7 +19,7 @@ interface EffectLogger {
   readonly fatal: (msg: string, ...args: Array<unknown>) => Effect.Effect<void>;
 }
 
-const EffectLogger = Context.GenericTag<EffectLogger>("@tele-kb-bot/logger");
+const EffectLogger = Context.GenericTag<EffectLogger>('@tele-kb-bot/logger');
 
 // ─── Pino Backend ───────────────────────────────────────────────────
 
@@ -28,16 +28,16 @@ const createPinoLogger = (name: string, level: string): pino.Logger =>
     name,
     level,
     transport: {
-      target: "pino-pretty",
+      target: 'pino-pretty',
       options: {
         colorize: true,
-        translateTime: "HH:MM:ss.l",
-        ignore: "pid,hostname",
+        translateTime: 'HH:MM:ss.l',
+        ignore: 'pid,hostname',
       },
     },
     redact: {
-      paths: ["*.bot_token", "*.api_key", "*.token", "*.secret"],
-      censor: "***redacted***",
+      paths: ['*.bot_token', '*.api_key', '*.token', '*.secret'],
+      censor: '***redacted***',
     },
     serializers: {
       err: pino.stdSerializers.err,
@@ -68,7 +68,7 @@ const EffectLoggerLive = (name: string, level: string): Layer.Layer<EffectLogger
  * Create a direct pino logger for CLI use (no Effect dependency).
  */
 const createCLILogger = (name: string, level?: string): pino.Logger =>
-  createPinoLogger(name, level ?? process.env.LOG_LEVEL ?? "info");
+  createPinoLogger(name, level ?? process.env.LOG_LEVEL ?? 'info');
 
 // ─── Backward-Compatible Exports ─────────────────────────────────────
 
@@ -79,7 +79,7 @@ let _singletonLogger: pino.Logger | null = null;
  */
 const getLogger = (): pino.Logger => {
   if (!_singletonLogger) {
-    _singletonLogger = createCLILogger("tele-kb-bot");
+    _singletonLogger = createCLILogger('tele-kb-bot');
   }
   return _singletonLogger;
 };
@@ -88,7 +88,7 @@ const getLogger = (): pino.Logger => {
  * @deprecated Use createCLILogger() instead.
  */
 const createLogger = (opts?: { name?: string; level?: string }): pino.Logger => {
-  _singletonLogger = createCLILogger(opts?.name ?? "tele-kb-bot", opts?.level);
+  _singletonLogger = createCLILogger(opts?.name ?? 'tele-kb-bot', opts?.level);
   return _singletonLogger;
 };
 
