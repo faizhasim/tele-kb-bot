@@ -1,0 +1,15 @@
+{
+    "version": "0.1.1-rc.1",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.1-rc.1/tele-kb-bot-windows-amd64.zip",
+            "bin": [
+                "tele-kb-bot.exe"
+            ],
+            "hash": "a9a0284871376ce9dfd15d1eeb3b96c3e27b5f084cb77aafcf7f70c3ee702b3d"
+        }
+    },
+    "homepage": "https://github.com/faizhasim/tele-kb-bot",
+    "license": "MIT",
+    "description": "Telegram knowledge base bot powered by the pi SDK"
+}
