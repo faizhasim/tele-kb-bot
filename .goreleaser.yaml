@@ -1,0 +1,91 @@
+# GoReleaser configuration for tele-kb-bot
+# Uses native Bun builder to compile TypeScript to standalone binaries
+# Publishes to GitHub Releases + updates Homebrew formula
+
+version: 2
+
+project_name: tele-kb-bot
+
+before:
+  hooks:
+    - bun install --frozen-lockfile
+
+builds:
+  - builder: bun
+    id: tele-kb-bot
+    binary: tele-kb-bot
+    main: src/index.ts
+    targets:
+      - darwin-arm64
+      - darwin-x64
+      - linux-arm64
+      - linux-x64-modern
+      - windows-x64-modern
+
+archives:
+  - id: default
+    formats: ["tar.gz"]
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - none*
+
+checksum:
+  name_template: "SHA256SUMS.txt"
+  algorithm: sha256
+
+# Homebrew Formula (macOS + Linux CLI install)
+brews:
+  - repository:
+      owner: faizhasim
+      name: tele-kb-bot
+    directory: Formula
+    homepage: https://github.com/faizhasim/tele-kb-bot
+    description: "Telegram knowledge base bot powered by the pi SDK"
+    license: "MIT"
+    test: |
+      system "#{bin}/tele-kb-bot version"
+    install: |
+      bin.install "tele-kb-bot"
+    caveats: |
+      Optional — qmd enables semantic memory search (vector + hybrid):
+        brew install qmd                  # uses Homebrew's Bun
+        # or if you manage Bun via mise:
+        bun install -g https://github.com/tobi/qmd
+
+      Then set up and enable:
+        qmd collection add ~/.config/tele-kb-bot/memory --name tele-kb-bot
+        qmd embed
+        # config: memory.qmd.enabled: true
+
+      Built-in BM25 works without qmd — no setup needed.
+
+# Scoop manifest (Windows)
+scoops:
+  - repository:
+      owner: faizhasim
+      name: tele-kb-bot
+    directory: Scoop
+    homepage: https://github.com/faizhasim/tele-kb-bot
+    description: "Telegram knowledge base bot powered by the pi SDK"
+    license: "MIT"
+
+release:
+  github:
+    owner: faizhasim
+    name: tele-kb-bot
+  name_template: "v{{ .Version }}"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "merge conflict"
+      - Merge pull request
+      - Merge branch
