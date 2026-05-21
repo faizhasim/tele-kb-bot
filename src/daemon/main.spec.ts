@@ -1,0 +1,239 @@
+/**
+ * Tests for the daemon main module.
+ *
+ * Covers startDaemon() wiring: config loading, bot token verification,
+ * controller/session registry creation, and signal handler setup.
+ *
+ * @module
+ */
+
+import { Context, Effect, Layer } from 'effect';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// ─── Hoisted mock references ──────────────────────────────────────
+
+const {
+  mockCreateCLILogger,
+  mockLoadConfig,
+  mockResolveConfigDir,
+  mockEnsureConfigDirs,
+  mockCreateBotController,
+  mockCreateSessionRegistry,
+  mockCreateMemoryContext,
+  TEST_CONFIG_RESULT,
+} = vi.hoisted(() => {
+  const config = {
+    telegram: { bot_token: 'test:token', allowed_user_ids: [12345] },
+    llm: { provider: 'test-provider', model: 'test-model', reasoning: 'off' },
+    memory: {
+      enabled: false,
+      mode: 'ephemeral',
+      auto_inject: false,
+      search: { max_results: 5, mode: 'keyword' },
+      cache: { max_entries: 100, max_size_bytes: 1_000_000 },
+      qmd: { enabled: false, binary_path: 'qmd' },
+    },
+    bot: {
+      max_attachments_per_turn: 10,
+      streaming_preview: false,
+      text_chunk_size: 4096,
+    },
+    vault_directories: [],
+    system_prompt: undefined,
+  };
+
+  return {
+    mockCreateCLILogger: vi.fn().mockReturnValue({
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+      fatal: vi.fn(),
+    }),
+    mockLoadConfig: vi.fn().mockImplementation(() => {
+      // We'll set the actual return value below via mockReturnValue
+      return Effect.succeed({
+        config,
+        configDir: '/tmp/test',
+        source: 'env-only',
+      });
+    }),
+    mockResolveConfigDir: vi.fn().mockReturnValue('/tmp/test'),
+    mockEnsureConfigDirs: vi.fn().mockImplementation(() => Effect.void),
+    mockCreateBotController: vi.fn().mockReturnValue({
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+    }),
+    mockCreateSessionRegistry: vi.fn().mockReturnValue({
+      disposeAll: vi.fn().mockResolvedValue(undefined),
+      activeCount: vi.fn().mockReturnValue(0),
+      getOrCreate: vi.fn().mockResolvedValue({}),
+    }),
+    mockCreateMemoryContext: vi.fn().mockResolvedValue({
+      backend: { isAvailable: vi.fn().mockReturnValue(true) },
+      configDir: '/tmp/test/memory',
+    }),
+    TEST_CONFIG_RESULT: {
+      config,
+      configDir: '/tmp/test',
+      source: 'env-only',
+    },
+  };
+});
+
+// ─── Module mocks ──────────────────────────────────────────────────
+
+vi.mock('../config/loader', () => ({
+  loadConfig: mockLoadConfig,
+}));
+
+vi.mock('../config/paths', () => ({
+  resolveConfigDir: mockResolveConfigDir,
+  ensureConfigDirs: mockEnsureConfigDirs,
+}));
+
+vi.mock('../logger', () => {
+  const MockLoggerTag = Context.GenericTag('@tele-kb-bot/logger');
+  return {
+    createCLILogger: mockCreateCLILogger,
+    EffectLoggerLive: vi.fn(() =>
+      Layer.effect(
+        MockLoggerTag,
+        Effect.sync(() => ({
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn: vi.fn(),
+          error: vi.fn(),
+          fatal: vi.fn(),
+        })),
+      ),
+    ),
+  };
+});
+
+vi.mock('../memory/manager', () => ({
+  createMemoryContext: mockCreateMemoryContext,
+}));
+
+vi.mock('./bot', () => ({
+  createBotController: mockCreateBotController,
+}));
+
+vi.mock('./session-registry', () => ({
+  createSessionRegistry: mockCreateSessionRegistry,
+}));
+
+// ─── Imports after vi.mock ────────────────────────────────────────
+
+import { startDaemon } from './main';
+
+// ─── Tests ────────────────────────────────────────────────────────
+
+describe('startDaemon', () => {
+  let onSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    onSpy = vi.spyOn(process, 'on').mockImplementation(() => process);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  // ──────────────────────────────────────────────────────────────────
+  // Bot token verification failure
+  // ──────────────────────────────────────────────────────────────────
+
+  it('exits with code 1 when bot token verification fails', async () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit');
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: false, description: 'Invalid token' }),
+      }),
+    );
+
+    await expect(startDaemon()).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  // ──────────────────────────────────────────────────────────────────
+  // Successful token verification
+  // ──────────────────────────────────────────────────────────────────
+
+  it('creates bot controller and session registry when token is valid', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: true, result: { first_name: 'TestBot' } }),
+      }),
+    );
+
+    await startDaemon();
+
+    expect(mockLoadConfig).toHaveBeenCalled();
+    expect(mockCreateSessionRegistry).toHaveBeenCalled();
+    expect(mockCreateBotController).toHaveBeenCalled();
+    expect(mockCreateBotController.mock.results[0]?.value.start).toHaveBeenCalled();
+  });
+
+  // ──────────────────────────────────────────────────────────────────
+  // Signal handler setup
+  // ──────────────────────────────────────────────────────────────────
+
+  it('sets up signal handlers without throwing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: true, result: { first_name: 'TestBot' } }),
+      }),
+    );
+
+    await expect(startDaemon()).resolves.toBeUndefined();
+
+    expect(onSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
+    expect(onSpy).toHaveBeenCalledWith('SIGTERM', expect.any(Function));
+  });
+
+  // ──────────────────────────────────────────────────────────────────
+  // Config is passed to session registry
+  // ──────────────────────────────────────────────────────────────────
+
+  it('passes config and configDir to createSessionRegistry', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: true, result: { first_name: 'TestBot' } }),
+      }),
+    );
+
+    await startDaemon();
+
+    expect(mockCreateSessionRegistry).toHaveBeenCalledWith(TEST_CONFIG_RESULT.config, TEST_CONFIG_RESULT.configDir);
+  });
+
+  it('passes config, registry, and memory context to createBotController', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: true, result: { first_name: 'TestBot' } }),
+      }),
+    );
+
+    await startDaemon();
+
+    // First arg: config
+    expect(mockCreateBotController).toHaveBeenCalledWith(
+      TEST_CONFIG_RESULT.config,
+      expect.any(Object), // session registry
+      expect.objectContaining({
+        backend: expect.objectContaining({ isAvailable: expect.any(Function) }),
+      }), // memory context
+    );
+  });
+});

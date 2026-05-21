@@ -11,8 +11,25 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseSize } from '../config/size';
+
+// ─── Mock external dependencies ───────────────────────────────────
+
+const mockClack = vi.hoisted(() => ({
+  text: vi.fn(),
+  password: vi.fn(),
+  select: vi.fn(),
+  spinner: vi.fn(() => ({ start: vi.fn(), stop: vi.fn() })),
+  intro: vi.fn(),
+  outro: vi.fn(),
+  cancel: vi.fn(),
+  isCancel: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@clack/prompts', () => mockClack);
+
+import { promptPassword, promptText } from './setup';
 
 // ─── Prompt Helper Logic Tests ──────────────────────────────────────
 
@@ -204,6 +221,237 @@ describe('buildConfig', () => {
   });
 });
 
+// ─── promptText Tests (mocked @clack/prompts) ──────────────────────
+
+describe('promptText (mocked @clack/prompts)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockClack.isCancel.mockReturnValue(false);
+  });
+
+  it('returns value from clack prompt when non-empty', async () => {
+    mockClack.text.mockResolvedValue('user-input');
+    const result = await promptText('Enter value', 'existing');
+    expect(result).toBe('user-input');
+  });
+
+  it('returns existing when clack returns empty string', async () => {
+    mockClack.text.mockResolvedValue('');
+    const result = await promptText('Enter value', 'existing');
+    expect(result).toBe('existing');
+  });
+
+  it('handles cancel (isCancel returns symbol → process.exit)', async () => {
+    const cancelSymbol = Symbol('cancel');
+    mockClack.text.mockResolvedValue(cancelSymbol);
+    mockClack.isCancel.mockReturnValue(true);
+
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    await promptText('Enter value', 'existing');
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    exitSpy.mockRestore();
+  });
+});
+
+// ─── promptPassword Tests (mocked @clack/prompts) ──────────────────
+
+describe('promptPassword (mocked @clack/prompts)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockClack.isCancel.mockReturnValue(false);
+  });
+
+  it('returns value from clack when non-empty', async () => {
+    mockClack.password.mockResolvedValue('new-key');
+    const result = await promptPassword('Enter key', 'existing-key');
+    expect(result).toBe('new-key');
+  });
+
+  it('returns existing when clack returns empty and existing is set', async () => {
+    mockClack.password.mockResolvedValue('');
+    const result = await promptPassword('Enter key', 'existing-key');
+    expect(result).toBe('existing-key');
+  });
+
+  it('returns undefined when clack returns empty and no existing', async () => {
+    mockClack.password.mockResolvedValue('');
+    const result = await promptPassword('Enter key');
+    expect(result).toBeUndefined();
+  });
+
+  it('validate callback returns error when empty and no existing', async () => {
+    let capturedValidate: ((v: string | undefined) => string | undefined) | undefined;
+    mockClack.password.mockImplementation((opts: object) => {
+      capturedValidate = (opts as Record<string, unknown>).validate as (v: string | undefined) => string | undefined;
+      return Promise.resolve('');
+    });
+
+    await promptPassword('Enter key');
+    expect(capturedValidate).toBeDefined();
+    expect(capturedValidate?.('')).toBe('Required');
+    expect(capturedValidate?.(undefined)).toBe('Required');
+  });
+
+  it('validate callback returns undefined when empty with existing (keep)', async () => {
+    let capturedValidate: ((v: string | undefined) => string | undefined) | undefined;
+    mockClack.password.mockImplementation((opts: object) => {
+      capturedValidate = (opts as Record<string, unknown>).validate as (v: string | undefined) => string | undefined;
+      return Promise.resolve('');
+    });
+
+    await promptPassword('Enter key', 'existing-key');
+    expect(capturedValidate).toBeDefined();
+    expect(capturedValidate?.('')).toBeUndefined();
+    expect(capturedValidate?.(undefined)).toBeUndefined();
+  });
+
+  it('handles cancel', async () => {
+    const cancelSymbol = Symbol('cancel');
+    mockClack.password.mockResolvedValue(cancelSymbol);
+    mockClack.isCancel.mockReturnValue(true);
+
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    await promptPassword('Enter key');
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    exitSpy.mockRestore();
+  });
+});
+
+// ─── validateBotToken Tests (simulate pattern) ────────────────────
+
+interface TelegramUser {
+  readonly id: number;
+  readonly is_bot: boolean;
+  readonly first_name: string;
+  readonly username?: string;
+}
+
+interface ValidateBotTokenResult {
+  ok: boolean;
+  bot?: TelegramUser;
+  error?: string;
+}
+
+async function simulateValidateBotToken(
+  token: string,
+  mockFetch: (url: string, init?: RequestInit) => Promise<Response>,
+): Promise<ValidateBotTokenResult> {
+  try {
+    const response = await mockFetch(`https://api.telegram.org/bot${token}/getMe`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = (await response.json()) as { ok: boolean; result?: TelegramUser; description?: string };
+    if (data.ok && data.result) return { ok: true, bot: data.result };
+    return { ok: false, error: data.description ?? 'Unknown error' };
+  } catch (err) {
+    return { ok: false, error: `Network error: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
+describe('validateBotToken', () => {
+  it('returns ok:true,bot when API succeeds', async () => {
+    const mockBot = { id: 123, is_bot: true, first_name: 'TestBot', username: 'testbot' };
+    const mockFetch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ ok: true, result: mockBot }),
+    });
+
+    const result = await simulateValidateBotToken('valid-token', mockFetch);
+    expect(result.ok).toBe(true);
+    expect(result.bot).toEqual(mockBot);
+  });
+
+  it('returns ok:false,error when API returns !ok', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ ok: false, description: 'Invalid token' }),
+    });
+
+    const result = await simulateValidateBotToken('bad-token', mockFetch);
+    expect(result.ok).toBe(false);
+    expect(result.error).toBe('Invalid token');
+  });
+
+  it('returns ok:false,error when fetch throws (network error)', async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new Error('Network failure'));
+
+    const result = await simulateValidateBotToken('token', mockFetch);
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('Network error');
+  });
+});
+
+// ─── writeConfigYaml Tests (simulate pattern) ──────────────────────
+
+function simulateWriteConfigYaml(
+  configDir: string,
+  config: Record<string, unknown>,
+  mockWriteFileSync: (...args: unknown[]) => void,
+): void {
+  mockWriteFileSync(
+    join(configDir, 'config.yaml'),
+    yaml.dump(config, { indent: 2, lineWidth: 120, noRefs: true, sortKeys: false }),
+    { mode: 0o600 },
+  );
+}
+
+describe('writeConfigYaml', () => {
+  it('writes YAML config to correct path with mode 0o600', () => {
+    const mockWriteFileSync = vi.fn();
+    const configDir = '/tmp/test-config';
+
+    simulateWriteConfigYaml(configDir, { telegram: { bot_token: 'test' } }, mockWriteFileSync);
+
+    expect(mockWriteFileSync).toHaveBeenCalledWith(join(configDir, 'config.yaml'), expect.any(String), { mode: 0o600 });
+  });
+
+  it('writes valid YAML content', () => {
+    const mockWriteFileSync = vi.fn();
+
+    simulateWriteConfigYaml('/tmp/test-config', { telegram: { bot_token: 'abc' } }, mockWriteFileSync);
+
+    const writtenYaml = mockWriteFileSync.mock.calls[0]?.[1] as string;
+    const parsed = yaml.load(writtenYaml) as Record<string, unknown>;
+    expect((parsed.telegram as Record<string, unknown>).bot_token).toBe('abc');
+  });
+});
+
+// ─── writeAuthJson Tests (simulate pattern) ────────────────────────
+
+function simulateWriteAuthJson(
+  configDir: string,
+  apiKey: string,
+  mockWriteFileSync: (...args: unknown[]) => void,
+): void {
+  mockWriteFileSync(
+    join(configDir, 'agents', 'auth.json'),
+    `${JSON.stringify({ 'opencode-go': { type: 'api_key', key: apiKey } }, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+}
+
+describe('writeAuthJson', () => {
+  it('writes auth JSON to agents/auth.json with mode 0o600', () => {
+    const mockWriteFileSync = vi.fn();
+
+    simulateWriteAuthJson('/tmp/test-config', 'sk-test-key', mockWriteFileSync);
+
+    expect(mockWriteFileSync).toHaveBeenCalledWith(
+      join('/tmp/test-config', 'agents', 'auth.json'),
+      expect.any(String),
+      { mode: 0o600 },
+    );
+  });
+
+  it('writes correct JSON structure with api key', () => {
+    const mockWriteFileSync = vi.fn();
+
+    simulateWriteAuthJson('/tmp/test-config', 'sk-secret-456', mockWriteFileSync);
+
+    const writtenJson = mockWriteFileSync.mock.calls[0]?.[1] as string;
+    const parsed = JSON.parse(writtenJson);
+    expect(parsed['opencode-go']).toEqual({ type: 'api_key', key: 'sk-secret-456' });
+  });
+});
+
 // ─── loadExistingConfig Tests ──────────────────────────────────────
 
 describe('loadExistingConfig (via YAML round-trip)', () => {
@@ -258,6 +506,48 @@ describe('loadExistingConfig (via YAML round-trip)', () => {
     const loaded = simulateLoadExistingConfigDefaults(tmpDir);
     expect(loaded.botToken).toBe('');
   });
+
+  it('reads api_key from config YAML', () => {
+    const config = simulateBuildConfig({
+      ...DEFAULT_STATE,
+      botToken: 'test:token',
+      allowedUserIds: [123],
+      apiKey: 'sk-from-config',
+    });
+    writeFileSync(join(tmpDir, 'config.yaml'), yaml.dump(config, {}), 'utf-8');
+    const loaded = simulateLoadExistingConfigDefaults(tmpDir);
+    expect(loaded.apiKey).toBe('sk-from-config');
+  });
+
+  it('reads api_key from auth.json when not in config YAML', () => {
+    const config = simulateBuildConfig({
+      ...DEFAULT_STATE,
+      botToken: 'test:token',
+      allowedUserIds: [123],
+      apiKey: undefined,
+    });
+    writeFileSync(join(tmpDir, 'config.yaml'), yaml.dump(config, {}), 'utf-8');
+    const authDir = join(tmpDir, 'agents');
+    mkdirSync(authDir, { recursive: true });
+    writeFileSync(
+      join(authDir, 'auth.json'),
+      `${JSON.stringify({ 'opencode-go': { type: 'api_key', key: 'sk-from-auth' } }, null, 2)}\n`,
+    );
+    const loaded = simulateLoadExistingConfigDefaults(tmpDir);
+    expect(loaded.apiKey).toBe('sk-from-auth');
+  });
+
+  it('returns undefined apiKey when neither config nor auth.json has it', () => {
+    const config = simulateBuildConfig({
+      ...DEFAULT_STATE,
+      botToken: 'test:token',
+      allowedUserIds: [123],
+      apiKey: undefined,
+    });
+    writeFileSync(join(tmpDir, 'config.yaml'), yaml.dump(config, {}), 'utf-8');
+    const loaded = simulateLoadExistingConfigDefaults(tmpDir);
+    expect(loaded.apiKey).toBeUndefined();
+  });
 });
 
 function simulateLoadExistingConfigDefaults(configDir: string): SetupState {
@@ -283,12 +573,31 @@ function simulateLoadExistingConfigDefaults(configDir: string): SetupState {
     const memoryRaw = parsed.memory as Record<string, unknown> | undefined;
     const cacheRaw = memoryRaw?.cache as Record<string, unknown> | undefined;
 
+    // Read api_key from config YAML or auth.json
+    const llmRaw = parsed.llm as Record<string, unknown> | undefined;
+    let apiKey: string | undefined = llmRaw?.api_key as string | undefined;
+    if (!apiKey) {
+      try {
+        const authPath = join(configDir, 'agents', 'auth.json');
+        if (exists(authPath)) {
+          const authRaw = read(authPath, 'utf-8');
+          const authParsed = JSON.parse(authRaw) as Record<string, unknown>;
+          const entry = authParsed['opencode-go'] as Record<string, unknown> | undefined;
+          if (entry && typeof entry.key === 'string') {
+            apiKey = entry.key;
+          }
+        }
+      } catch {
+        // auth.json read failure is non-fatal
+      }
+    }
+
     return {
       botToken: typeof t?.bot_token === 'string' ? t.bot_token : defaults.botToken,
       allowedUserIds: Array.isArray(t?.allowed_user_ids)
         ? (t?.allowed_user_ids as Array<number>).filter((id) => typeof id === 'number')
         : defaults.allowedUserIds,
-      apiKey: '',
+      apiKey: apiKey ?? defaults.apiKey,
       memoryMode: ((memoryRaw?.mode as string) ?? defaults.memoryMode) as 'ephemeral' | 'persistent',
       cacheMaxEntries: (cacheRaw?.max_entries as number) ?? defaults.cacheMaxEntries,
       cacheMaxSizeBytes: (cacheRaw?.max_size_bytes as number) ?? defaults.cacheMaxSizeBytes,
