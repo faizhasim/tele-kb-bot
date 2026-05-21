@@ -15,7 +15,9 @@
     "lint:md": "markdownlint-cli2 README.md .github/ docs/",
     "lint:fix": "biome check --write --unsafe src/",
     "format": "biome format --write src/",
-    "format:check": "biome format src/"
+    "format:check": "biome format src/",
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:watch": "vitest --coverage"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
@@ -23,6 +25,7 @@
     "@effect/vitest": "^0.29.0",
     "@types/bun": "latest",
     "@types/js-yaml": "^4.0.9",
+    "@vitest/coverage-istanbul": "^4.1.7",
     "markdownlint-cli2": "^0.22.1",
     "typescript": "^5",
     "vitest": "^4.1.7"

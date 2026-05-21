@@ -3,6 +3,7 @@
  *
  * Creates isolated AgentSession instances per Telegram chat, with
  * all paths explicitly pointed at <config_dir>/agents/.
+ * Initialises memory backend and injects read-only system prompt.
  *
  * @module
  */
@@ -18,14 +19,33 @@ import {
   SettingsManager,
 } from '@mariozechner/pi-coding-agent';
 import type { Config } from '../config/schema';
+import { buildSystemPrompt } from '../constants/system-prompt';
 import { getLogger } from '../logger';
+import type { MemoryContext } from '../memory/interface';
+import { createMemoryContext } from '../memory/manager';
 import { createExtensionFactories } from './extensions';
+
+// Module-level memory context, shared across sessions for the same configDir
+let _memoryContext: MemoryContext | null = null;
+
+/**
+ * Get the shared memory context, initializing if needed.
+ */
+async function getMemoryContext(config: Config, configDir: string): Promise<MemoryContext> {
+  if (_memoryContext && _memoryContext.configDir === configDir) {
+    return _memoryContext;
+  }
+  const ctx = await createMemoryContext(config, configDir);
+  _memoryContext = ctx;
+  return ctx;
+}
 
 /**
  * Create an AgentSession for a specific Telegram chat.
  *
  * Each call creates a fresh, independent session. All paths are explicitly
  * set to use <config_dir>/agents/ — nothing touches ~/.pi/.
+ * Memory backend is initialised once and shared across sessions.
  *
  * @param config - Loaded bot config
  * @param configDir - Resolved config directory path
@@ -51,8 +71,12 @@ export async function createPiSession(
   // 3. Settings manager
   const settingsManager = SettingsManager.create(cwd, agentDir);
 
-  // 4. Create runtime services with compiled-in extensions
+  // 4. Memory context — build or reuse shared index
+  const memoryCtx = await getMemoryContext(config, configDir);
+
+  // 5. Create runtime services with compiled-in extensions + system prompt
   log.debug({ agentDir }, 'Creating pi SDK services');
+  const systemPrompt = buildSystemPrompt(config.vault_directories, config.system_prompt);
   const services = await createAgentSessionServices({
     cwd,
     agentDir,
@@ -60,7 +84,8 @@ export async function createPiSession(
     modelRegistry,
     settingsManager,
     resourceLoaderOptions: {
-      extensionFactories: createExtensionFactories(),
+      extensionFactories: createExtensionFactories(memoryCtx),
+      systemPrompt,
       noExtensions: true, // Don't auto-discover extensions from filesystem
       noSkills: true,
       noPromptTemplates: true,

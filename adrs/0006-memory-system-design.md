@@ -14,11 +14,13 @@ The system must work offline (no external services), be human-readable (plain ma
 
 ## Decision Drivers
 
-- Zero external dependencies — must work without internet or services
+- Two memory modes: ephemeral (BM25 in-memory) and persistent (qmd on-disk)
 - Human-readable files — markdown is git-friendly, editable by hand
 - Context injection must be additive — never replace or truncate the LLM's system prompt
 - BM25 search in pure TypeScript — no native modules
-- qmd support must be optional — if binary not in PATH, degrade gracefully
+- LRU cache for query results with configurable size/count limits
+- qmd support must be optional — if binary not in PATH, degrade gracefully to BM25
+- Idempotent setup — re-running setup preserves existing values
 
 ## Considered Options
 
@@ -29,18 +31,23 @@ The system must work offline (no external services), be human-readable (plain ma
 
 ## Decision Outcome
 
-Chosen option: **Plain markdown + pure-TypeScript BM25**, because:
+Chosen option: **Dual-mode memory with LRU cache**, because:
 
-- Markdown files are human-readable, git-friendly, and easy to backup
-- Pure-TypeScript BM25 has zero dependencies and works in `bun build --compile`
-- qmd integration is gated behind `which qmd` check — degrades to BM25 if missing
+- Two modes: ephemeral (BM25 in-memory, rebuilt on startup) and persistent (qmd on-disk, survives restarts)
+- Memory tools are wired to the real backend — no more stubs
+- LRU cache avoids redundant search calls with configurable memory limits
+- Context injection happens before each prompt if `auto_inject` is enabled
+- qmd integration is gated behind `which qmd` check — degrades gracefully to BM25
 - File layout follows pi-memory patterns (adapted from MIT-licensed reference)
 
 ### Consequences
 
 - Good, because memory files are portable and editable by hand
 - Good, because BM25 is well-understood, testable, and has no native deps
+- Good, because LRU cache reduces redundant search calls
+- Good, because persistent mode (qmd) survives restarts with semantic search
 - Bad, because BM25 is limited to keyword matching — no semantic understanding without qmd
+- Bad, because qmd requires a native binary (optional, graceful fallback)
 - Bad, because markdown parsing (especially scratchpad) is best-effort
 
 ### Confirmation
@@ -64,6 +71,35 @@ Context injection order (all additive, total capped at 16K chars):
 3. BM25 search results from user prompt (2.5K chars)
 4. MEMORY.md middle-truncated (4K chars)
 5. Yesterday's daily log tail (3K chars)
+
+Injection is gated by `memory.auto_inject` in config. The memory context is built from scratchpad + daily logs + backend search results, then prepended to the user message before it reaches the LLM.
+
+## Vault Directories
+
+Vault directories are paths to markdown/PDF knowledge bases that the bot can search.
+
+- Configured via `vault_directories` in config.yaml (array of absolute paths)
+- Also settable via `VAULT_DIRECTORIES` env var (colon-separated on Unix, semicolon on Windows)
+- In persistent mode, `qmd index` is called on each vault directory at startup
+- In ephemeral mode, vault files are scanned and indexed into BM25 at runtime
+- The `tele-kb-bot index` CLI command triggers indexing manually
+
+## LRU Cache
+
+Search results are cached in an LRU (Least Recently Used) cache to avoid redundant queries:
+
+- `memory.cache.max_entries` — max number of cached queries (default: 100)
+- `memory.cache.max_size_bytes` — max total cache size in bytes (default: 100 MB)
+- Eviction: when either limit is exceeded, least recently used entries are evicted first
+- Size validation in setup uses human-readable formats ("500MB", "2GB")
+
+## Setup Idempotency
+
+The `tele-kb-bot setup` command is idempotent:
+- Re-running setup preserves existing values unless explicitly changed
+- Each field shows its current value as the default
+- Pressing Enter keeps the existing value unchanged
+- Users can incrementally update individual settings without losing others
 
 ### Related Decisions
 

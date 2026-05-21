@@ -34,6 +34,12 @@ const SearchConfig = S.Struct({
   mode: S.Union(S.Literal('keyword'), S.Literal('semantic')),
 });
 
+/** LRU cache configuration for search query results */
+const CacheConfig = S.Struct({
+  max_entries: S.Number,
+  max_size_bytes: S.Number,
+});
+
 /** qmd is a local markdown search engine (https://github.com/tobi/qmd) */
 const QmdConfig = S.Struct({
   enabled: S.Boolean,
@@ -42,8 +48,11 @@ const QmdConfig = S.Struct({
 
 const MemoryConfig = S.Struct({
   enabled: S.Boolean,
+  /** 'ephemeral' = BM25 in-memory (lost on restart), 'persistent' = qmd on-disk index */
+  mode: S.Union(S.Literal('ephemeral'), S.Literal('persistent')),
   auto_inject: S.Boolean,
   search: SearchConfig,
+  cache: CacheConfig,
   qmd: QmdConfig,
 });
 
@@ -62,6 +71,10 @@ const ConfigSchema = S.Struct({
   llm: LlmConfig,
   memory: MemoryConfig,
   bot: BotConfig,
+  /** Directories to scan for markdown/PDF knowledge files */
+  vault_directories: S.Array(S.String),
+  /** Override the default read-only system prompt. Omit or empty to use built-in default. */
+  system_prompt: S.optional(S.String),
 });
 
 type Config = S.Schema.Type<typeof ConfigSchema>;
@@ -82,14 +95,13 @@ const SECRET_PATHS: ReadonlyArray<[keyof Config, string]> = [
  * Returns a new object with secrets replaced by `***redacted***`.
  */
 const redactConfig = (config: Config): Config => {
-  const clone = structuredClone(config) as Record<string, Record<string, unknown>>;
+  const clone = structuredClone(config) as unknown as Record<string, Record<string, unknown>>;
   for (const [section, field] of SECRET_PATHS) {
-    const val = clone[section as string]?.[field];
-    if (val !== undefined) {
-      (clone[section as string] as Record<string, unknown>)[field] = '***redacted***';
+    if (clone[section]?.[field] !== undefined) {
+      clone[section][field] = '***redacted***';
     }
   }
-  return clone as Config;
+  return clone as unknown as Config;
 };
 
 export { redactConfig };

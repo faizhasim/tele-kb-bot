@@ -10,6 +10,9 @@
 import { Bot, type Context } from 'grammy';
 import type { Config } from '../config/schema';
 import { createCLILogger } from '../logger';
+import { buildMemoryContext } from '../memory/context';
+import type { MemoryContext } from '../memory/interface';
+import { readMemorySync, readScratchpadSync } from '../memory/manager';
 import { splitIntoChunks } from '../telegram/chunking';
 import type { SessionRegistry } from './session-registry';
 
@@ -26,7 +29,7 @@ const isAllowed = (ctx: Context, config: Config): boolean => {
 
 const TYPING_INTERVAL = 4000;
 
-const createBotController = (config: Config, registry: SessionRegistry): BotController => {
+const createBotController = (config: Config, registry: SessionRegistry, memoryCtx?: MemoryContext): BotController => {
   const log = createCLILogger('tele-kb-bot');
   const bot = new Bot(config.telegram.bot_token);
   const typingTimers = new Map<number, ReturnType<typeof setInterval>>();
@@ -55,7 +58,19 @@ const createBotController = (config: Config, registry: SessionRegistry): BotCont
   const sendChunked = async (chatId: number, text: string): Promise<void> => {
     const chunks = splitIntoChunks(text);
     for (const chunk of chunks) {
-      await bot.api.sendMessage(chatId, chunk, { link_preview_options: { is_disabled: true } });
+      try {
+        await bot.api.sendMessage(chatId, chunk, {
+          parse_mode: 'HTML',
+          link_preview_options: { is_disabled: true },
+        });
+      } catch (err) {
+        // HTML parsing failed — strip tags, retry as plain text
+        log.warn({ err: String(err) }, 'HTML send failed, falling back to plain text');
+        const plain = chunk.replace(/<[^>]*>/g, '').trim();
+        await bot.api.sendMessage(chatId, plain || '(empty response)', {
+          link_preview_options: { is_disabled: true },
+        });
+      }
     }
   };
 
@@ -105,8 +120,28 @@ const createBotController = (config: Config, registry: SessionRegistry): BotCont
         });
       });
 
+      // Build memory context if auto_inject is enabled
+      const promptPrefix =
+        config.memory.auto_inject && memoryCtx
+          ? await (async () => {
+              try {
+                const searchResults = await memoryCtx.backend.search(text, config.memory.search.max_results);
+                const ctxStr = buildMemoryContext({
+                  scratchpad: readScratchpadSync(memoryCtx.configDir),
+                  searchResults,
+                  longTermMemory: readMemorySync(memoryCtx.configDir),
+                });
+                return ctxStr ? `${ctxStr}\n\n---\n\n` : '';
+              } catch {
+                return '';
+              }
+            })()
+          : '';
+
+      const fullPrompt = promptPrefix ? `${promptPrefix}[telegram-kb] ${text}` : `[telegram-kb] ${text}`;
+
       try {
-        await session.prompt(`[telegram-kb] ${text}`);
+        await session.prompt(fullPrompt);
       } finally {
         clearTimeout(sessionTimeout);
         stopTyping(chatId);

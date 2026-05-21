@@ -13,6 +13,7 @@ import { loadConfig } from '../config/loader';
 import { ensureConfigDirs, resolveConfigDir } from '../config/paths';
 import { BINARY_NAME } from '../constants';
 import { createCLILogger, EffectLoggerLive } from '../logger';
+import { createMemoryContext } from '../memory/manager';
 import { createBotController } from './bot';
 import { createSessionRegistry } from './session-registry';
 
@@ -86,6 +87,10 @@ const startDaemon = (configOverride?: string): Promise<void> =>
       // Ensure directories
       yield* ensureConfigDirs(resolvedDir);
 
+      // Initialise memory backend
+      const memoryCtx = yield* Effect.promise(() => createMemoryContext(config, resolvedDir));
+      log.info({ mode: config.memory.mode, available: memoryCtx.backend.isAvailable() }, 'Memory backend initialised');
+
       // Create services
       const registry = createSessionRegistry(config, resolvedDir);
 
@@ -101,8 +106,8 @@ const startDaemon = (configOverride?: string): Promise<void> =>
       }
       log.info({ botName: tokenData.result?.first_name }, 'Bot token verified');
 
-      // Create controller
-      const controller = createBotController(config, registry);
+      // Create controller with memory context
+      const controller = createBotController(config, registry, memoryCtx);
       setupSignalHandlers(controller, registry);
 
       log.info('Starting bot polling...');

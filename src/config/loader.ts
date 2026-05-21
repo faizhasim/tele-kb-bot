@@ -52,6 +52,7 @@ interface LoadConfigResult {
 const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
   const result: Record<string, unknown> = {};
 
+  // ── Telegram ────────────────────────────────────────────────────
   const t = raw.telegram as Record<string, unknown> | undefined;
   if (t) {
     result.telegram = {};
@@ -60,6 +61,7 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
       (result.telegram as Record<string, unknown>).allowed_user_ids = t.allowed_user_ids;
   }
 
+  // ── LLM ─────────────────────────────────────────────────────────
   const l = raw.llm as Record<string, unknown> | undefined;
   if (l) {
     result.llm = {};
@@ -69,11 +71,14 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
     if (typeof l.api_key === 'string') (result.llm as Record<string, unknown>).api_key = l.api_key;
   }
 
+  // ── Memory ──────────────────────────────────────────────────────
   const m = raw.memory as Record<string, unknown> | undefined;
   if (m) {
     result.memory = {};
     if (typeof m.enabled === 'boolean') (result.memory as Record<string, unknown>).enabled = m.enabled;
+    if (typeof m.mode === 'string') (result.memory as Record<string, unknown>).mode = m.mode;
     if (typeof m.auto_inject === 'boolean') (result.memory as Record<string, unknown>).auto_inject = m.auto_inject;
+
     const s = m.search as Record<string, unknown> | undefined;
     if (s) {
       const search: Record<string, unknown> = {};
@@ -81,6 +86,15 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
       if (typeof s.mode === 'string') search.mode = s.mode;
       (result.memory as Record<string, unknown>).search = search;
     }
+
+    const c = m.cache as Record<string, unknown> | undefined;
+    if (c) {
+      const cache: Record<string, unknown> = {};
+      if (typeof c.max_entries === 'number') cache.max_entries = c.max_entries;
+      if (typeof c.max_size_bytes === 'number') cache.max_size_bytes = c.max_size_bytes;
+      (result.memory as Record<string, unknown>).cache = cache;
+    }
+
     const q = m.qmd as Record<string, unknown> | undefined;
     if (q) {
       const qmd: Record<string, unknown> = {};
@@ -90,6 +104,7 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
     }
   }
 
+  // ── Bot ─────────────────────────────────────────────────────────
   const b = raw.bot as Record<string, unknown> | undefined;
   if (b) {
     result.bot = {};
@@ -101,8 +116,22 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
       (result.bot as Record<string, unknown>).text_chunk_size = b.text_chunk_size;
   }
 
+  // ── Root-level fields ───────────────────────────────────────────
+  if (Array.isArray(raw.vault_directories)) {
+    result.vault_directories = raw.vault_directories.filter((v): v is string => typeof v === 'string');
+  }
+  if (typeof raw.system_prompt === 'string') {
+    result.system_prompt = raw.system_prompt;
+  }
+
   return result as Partial<Config>;
 };
+
+/**
+ * Split a platform-appropriate path separator.
+ * ':' on Unix, ';' on Windows.
+ */
+const PATH_SEPARATOR = process.platform === 'win32' ? ';' : ':';
 
 /**
  * Apply environment variable overrides to a config object.
@@ -113,6 +142,7 @@ const applyEnvOverrides = (config: Config): Config => {
   const userIds = process.env.TELEGRAM_ALLOWED_USER_IDS;
   const apiKey = process.env.OPENER_GO_API_KEY;
   const qmdPath = process.env.QMD_BINARY_PATH;
+  const vaultDirs = process.env.VAULT_DIRECTORIES;
 
   return {
     telegram: {
@@ -133,6 +163,13 @@ const applyEnvOverrides = (config: Config): Config => {
       qmd: qmdPath ? { ...config.memory.qmd, binary_path: qmdPath } : config.memory.qmd,
     },
     bot: config.bot,
+    vault_directories: vaultDirs
+      ? vaultDirs
+          .split(PATH_SEPARATOR)
+          .map((d) => d.trim())
+          .filter((d) => d.length > 0)
+      : config.vault_directories,
+    system_prompt: config.system_prompt,
   };
 };
 
@@ -140,7 +177,12 @@ const applyEnvOverrides = (config: Config): Config => {
  * Check if any tele-kb-bot env vars are set.
  */
 const hasEnvOverrides = (): boolean =>
-  !!(process.env.TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_ALLOWED_USER_IDS || process.env.OPENER_GO_API_KEY);
+  !!(
+    process.env.TELEGRAM_BOT_TOKEN ||
+    process.env.TELEGRAM_ALLOWED_USER_IDS ||
+    process.env.OPENER_GO_API_KEY ||
+    process.env.VAULT_DIRECTORIES
+  );
 
 // ─── File Reading (handles PlatformError) ────────────────────────────
 

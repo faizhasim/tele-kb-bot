@@ -13,6 +13,7 @@ This directory contains ADRs for tele-kb-bot, following the MADR format.
 | [0005](0005-telegram-bot-design.md) | Telegram Bot Design and Message Flow | Accepted | 2026-05-21 |
 | [0006](0006-memory-system-design.md) | Memory System Design | Accepted | 2026-05-21 |
 | [0007](0007-distribution-strategy-homebrew.md) | Distribution Strategy — Homebrew Tap | Accepted | 2026-05-21 |
+| [0008](0008-use-html-over-markdownv2.md) | Use HTML parse_mode over MarkdownV2 for Telegram Messages | Accepted | 2026-05-21 |
 
 ## Decision Graph
 
@@ -28,6 +29,7 @@ ADR-0004 (pi SDK)
 ADR-0005 (Telegram) → ADR-0004 (pi SDK) — messages dispatch to AgentSessions
 ADR-0006 (Memory) → ADR-0004 (pi SDK) — registered as extension factories
 ADR-0007 (Distribution) → ADR-0005 (Telegram) — distributes the bot
+ADR-0008 (HTML over MarkdownV2) → ADR-0005 (Telegram) — sendMessage parse mode
 ```
 
 ## Creating a New ADR

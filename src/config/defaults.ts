@@ -23,10 +23,15 @@ const getDefaultConfig = (): Config => ({
   },
   memory: {
     enabled: true,
+    mode: 'ephemeral',
     auto_inject: true,
     search: {
       max_results: 5,
       mode: 'keyword',
+    },
+    cache: {
+      max_entries: 100,
+      max_size_bytes: 104_857_600, // 100 MB
     },
     qmd: {
       enabled: false,
@@ -38,6 +43,8 @@ const getDefaultConfig = (): Config => ({
     streaming_preview: true,
     text_chunk_size: 4096,
   },
+  vault_directories: [],
+  system_prompt: undefined,
 });
 
 type DeepPartial<T> = {
@@ -84,6 +91,12 @@ const validateSemantic = (config: Config): ReadonlyArray<string> => {
   }
   if (config.telegram.allowed_user_ids.length === 0 && config.telegram.bot_token) {
     errors.push('telegram.allowed_user_ids: At least one user ID is required.');
+  }
+  if (config.memory.cache.max_entries < 1) {
+    errors.push('memory.cache.max_entries: Must be at least 1.');
+  }
+  if (config.memory.cache.max_size_bytes < 1024) {
+    errors.push('memory.cache.max_size_bytes: Must be at least 1 KB.');
   }
   return errors;
 };

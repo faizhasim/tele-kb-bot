@@ -74,6 +74,7 @@ const parseOutput = (raw: string): Array<QmdResult> => {
 };
 
 const search = (q: string, maxResults = 5): Array<QmdResult> | null => {
+  if (!q || q.trim().length === 0) return null;
   const out = run(['search', q, '--json', '--limit', String(maxResults)]);
   return out ? parseOutput(out) : null;
 };

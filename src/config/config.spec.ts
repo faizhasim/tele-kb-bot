@@ -16,29 +16,36 @@ import { resolveConfigDir } from './paths';
 import type { Config } from './schema';
 import { ConfigSchema, redactConfig } from './schema';
 
+// ─── Helpers ────────────────────────────────────────────────────────
+
+const MINIMAL_VALID_CONFIG = {
+  telegram: { bot_token: 'test:token', allowed_user_ids: [123] },
+  llm: {
+    provider: 'opencode-go',
+    model: 'deepseek-v4-flash',
+    reasoning: 'high' as const,
+  },
+  memory: {
+    enabled: true,
+    mode: 'ephemeral' as const,
+    auto_inject: true,
+    search: { max_results: 5, mode: 'keyword' as const },
+    cache: { max_entries: 100, max_size_bytes: 104_857_600 },
+    qmd: { enabled: false, binary_path: 'qmd' },
+  },
+  bot: {
+    max_attachments_per_turn: 10,
+    streaming_preview: true,
+    text_chunk_size: 4096,
+  },
+  vault_directories: [],
+};
+
 // ─── Schema Tests ────────────────────────────────────────────────────
 
 describe('ConfigSchema', () => {
   it('validates a correct config', () => {
-    const result = S.decodeUnknownEither(ConfigSchema)({
-      telegram: { bot_token: 'test:token', allowed_user_ids: [123] },
-      llm: {
-        provider: 'opencode-go',
-        model: 'deepseek-v4-flash',
-        reasoning: 'high',
-      },
-      memory: {
-        enabled: true,
-        auto_inject: true,
-        search: { max_results: 5, mode: 'keyword' },
-        qmd: { enabled: false, binary_path: 'qmd' },
-      },
-      bot: {
-        max_attachments_per_turn: 10,
-        streaming_preview: true,
-        text_chunk_size: 4096,
-      },
-    });
+    const result = S.decodeUnknownEither(ConfigSchema)(MINIMAL_VALID_CONFIG);
     expect(result._tag).toBe('Right');
     if (result._tag === 'Right') {
       expect(result.right.telegram.bot_token).toBe('test:token');
@@ -47,23 +54,41 @@ describe('ConfigSchema', () => {
 
   it('rejects missing bot_token', () => {
     const result = S.decodeUnknownEither(ConfigSchema)({
+      ...MINIMAL_VALID_CONFIG,
       telegram: { allowed_user_ids: [1] },
-      llm: {
-        provider: 'opencode-go',
-        model: 'deepseek-v4-flash',
-        reasoning: 'high',
-      },
-      memory: {
-        enabled: true,
-        auto_inject: true,
-        search: { max_results: 5, mode: 'keyword' },
-        qmd: { enabled: false, binary_path: 'qmd' },
-      },
-      bot: {
-        max_attachments_per_turn: 10,
-        streaming_preview: true,
-        text_chunk_size: 4096,
-      },
+    } as unknown as Record<string, unknown>);
+    expect(result._tag).toBe('Left');
+  });
+
+  it('accepts vault_directories', () => {
+    const result = S.decodeUnknownEither(ConfigSchema)({
+      ...MINIMAL_VALID_CONFIG,
+      vault_directories: ['/Users/me/vault'],
+    });
+    expect(result._tag).toBe('Right');
+    if (result._tag === 'Right') {
+      expect(result.right.vault_directories).toEqual(['/Users/me/vault']);
+    }
+  });
+
+  it('accepts memory.mode ephemeral and persistent', () => {
+    const eph = S.decodeUnknownEither(ConfigSchema)({
+      ...MINIMAL_VALID_CONFIG,
+      memory: { ...MINIMAL_VALID_CONFIG.memory, mode: 'ephemeral' },
+    });
+    expect(eph._tag).toBe('Right');
+
+    const per = S.decodeUnknownEither(ConfigSchema)({
+      ...MINIMAL_VALID_CONFIG,
+      memory: { ...MINIMAL_VALID_CONFIG.memory, mode: 'persistent' },
+    });
+    expect(per._tag).toBe('Right');
+  });
+
+  it('rejects invalid memory.mode', () => {
+    const result = S.decodeUnknownEither(ConfigSchema)({
+      ...MINIMAL_VALID_CONFIG,
+      memory: { ...MINIMAL_VALID_CONFIG.memory, mode: 'invalid' },
     } as unknown as Record<string, unknown>);
     expect(result._tag).toBe('Left');
   });
@@ -73,24 +98,9 @@ describe('ConfigSchema', () => {
 
 describe('redactConfig', () => {
   const makeConfig = (): Config => ({
+    ...MINIMAL_VALID_CONFIG,
     telegram: { bot_token: 'supersecret', allowed_user_ids: [123] },
-    llm: {
-      provider: 'opencode-go',
-      model: 'deepseek-v4-flash',
-      reasoning: 'high' as const,
-      api_key: 'sk-abc',
-    },
-    memory: {
-      enabled: true,
-      auto_inject: true,
-      search: { max_results: 5, mode: 'keyword' as const },
-      qmd: { enabled: false, binary_path: 'qmd' },
-    },
-    bot: {
-      max_attachments_per_turn: 10,
-      streaming_preview: true,
-      text_chunk_size: 4096,
-    },
+    llm: { ...MINIMAL_VALID_CONFIG.llm, api_key: 'sk-abc' },
   });
 
   it('redacts telegram.bot_token', () => {
@@ -119,9 +129,13 @@ describe('getDefaultConfig', () => {
     expect(config.llm.model).toBe('deepseek-v4-flash');
     expect(config.llm.reasoning).toBe('high');
     expect(config.memory.enabled).toBe(true);
+    expect(config.memory.mode).toBe('ephemeral');
     expect(config.memory.search.max_results).toBe(5);
-    expect(config.memory.search.mode).toBe('keyword');
+    expect(config.memory.cache.max_entries).toBe(100);
+    expect(config.memory.cache.max_size_bytes).toBe(104_857_600);
     expect(config.bot.streaming_preview).toBe(true);
+    expect(config.vault_directories).toEqual([]);
+    expect(config.system_prompt).toBeUndefined();
   });
 
   it('has an empty bot_token by default', () => {
@@ -138,6 +152,8 @@ describe('mergeConfig', () => {
     expect(merged.telegram.allowed_user_ids).toEqual([1, 2]);
     expect(merged.llm.provider).toBe('opencode-go');
     expect(merged.memory.enabled).toBe(true);
+    expect(merged.memory.mode).toBe('ephemeral');
+    expect(merged.vault_directories).toEqual([]);
   });
 
   it('preserves sibling fields on nested merge', () => {
@@ -146,6 +162,13 @@ describe('mergeConfig', () => {
     } as Partial<Config>);
     expect(merged.llm.api_key).toBe('sk-test');
     expect(merged.llm.provider).toBe('opencode-go');
+  });
+
+  it('merges vault_directories', () => {
+    const merged = mergeConfig({
+      vault_directories: ['/Users/me/docs'],
+    } as Partial<Config>);
+    expect(merged.vault_directories).toEqual(['/Users/me/docs']);
   });
 });
 
@@ -161,6 +184,15 @@ describe('validateSemantic', () => {
     const errors = validateSemantic(getDefaultConfig());
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0]?.toLowerCase()).toContain('bot_token');
+  });
+
+  it('rejects invalid cache settings', () => {
+    const errors = validateSemantic(
+      mergeConfig({
+        memory: { cache: { max_entries: 0, max_size_bytes: 100 } },
+      } as unknown as Partial<Config>),
+    );
+    expect(errors.length).toBeGreaterThan(0);
   });
 });
 

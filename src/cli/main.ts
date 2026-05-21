@@ -9,6 +9,7 @@
 import { BINARY_NAME, VERSION } from '../constants';
 import { createCLILogger } from '../logger';
 import { helpCommand } from './help';
+import { indexCommand } from './index';
 import { installCommand } from './install';
 import { setupCommand } from './setup';
 import { statusCommand } from './status';
@@ -55,6 +56,9 @@ const runCLI = async (args: Array<string>): Promise<void> => {
       break;
     case 'install-launchd':
       await installCommand(options);
+      break;
+    case 'index':
+      await indexCommand(options);
       break;
     case 'version':
       console.log(`${BINARY_NAME} v${VERSION}`);
