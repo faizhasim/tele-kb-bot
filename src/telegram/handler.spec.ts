@@ -5,7 +5,7 @@
  * functions through the public handleMessage API.
  */
 
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleMessage, isUserAllowed } from './handler';
 
 // ─── Hoisted Mocks ───────────────────────────────────────────────────

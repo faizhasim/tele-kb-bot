@@ -2,8 +2,8 @@
  * Tests for the Telegram streaming manager.
  */
 
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { StreamingManager, startStreaming, logResponseTiming } from './streaming';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { logResponseTiming, StreamingManager, startStreaming } from './streaming';
 
 // ─── Mock Logger ──────────────────────────────────────────────────
 

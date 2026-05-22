@@ -254,7 +254,7 @@ describe('createBotController', () => {
     function getTextHandler(): (ctx: Record<string, unknown>) => Promise<void> {
       const call = mockBot.on.mock.calls.find((c) => c[0] === ':text');
       expect(call).toBeDefined();
-      return call![1] as (ctx: Record<string, unknown>) => Promise<void>;
+      return call?.[1] as (ctx: Record<string, unknown>) => Promise<void>;
     }
 
     it('replies to /start command for allowed users', async () => {
@@ -375,7 +375,7 @@ describe('createBotController', () => {
     function getHandler(filter: string): (ctx: Record<string, unknown>) => Promise<void> {
       const call = mockBot.on.mock.calls.find((c) => c[0] === filter);
       expect(call, `Handler for ${filter} not registered`).toBeDefined();
-      return call![1] as (ctx: Record<string, unknown>) => Promise<void>;
+      return call?.[1] as (ctx: Record<string, unknown>) => Promise<void>;
     }
 
     it.each([

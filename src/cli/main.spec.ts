@@ -2,7 +2,7 @@
  * Tests for the CLI command router and argument parsing.
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BINARY_NAME, VERSION } from '../constants';
 import { parseArgs, runCLI } from './main';
 
@@ -15,12 +15,12 @@ vi.mock('./install', () => ({ installCommand: vi.fn().mockResolvedValue(undefine
 vi.mock('./index', () => ({ indexCommand: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../daemon/main', () => ({ startDaemon: vi.fn().mockResolvedValue(undefined) }));
 
+import { startDaemon } from '../daemon/main';
 import { helpCommand } from './help';
+import { indexCommand } from './index';
+import { installCommand } from './install';
 import { setupCommand } from './setup';
 import { statusCommand } from './status';
-import { installCommand } from './install';
-import { indexCommand } from './index';
-import { startDaemon } from '../daemon/main';
 
 describe('parseArgs', () => {
   it('parses help command from empty args', () => {

@@ -7,7 +7,7 @@
  * @module
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
@@ -29,7 +29,15 @@ const mockClack = vi.hoisted(() => ({
 
 vi.mock('@clack/prompts', () => mockClack);
 
-import { promptPassword, promptText } from './setup';
+// Mock dynamic imports for interactive mode prompts (install, index)
+const mockInstall = vi.hoisted(() => ({ installCommand: vi.fn() }));
+const mockIndex = vi.hoisted(() => ({ indexCommand: vi.fn() }));
+
+vi.mock('./install', () => mockInstall);
+vi.mock('./index', () => mockIndex);
+
+import type { CLIOptions } from './main';
+import { promptPassword, promptText, setupCommand } from './setup';
 
 // ─── Prompt Helper Logic Tests ──────────────────────────────────────
 
@@ -549,6 +557,632 @@ describe('loadExistingConfig (via YAML round-trip)', () => {
     expect(loaded.apiKey).toBeUndefined();
   });
 });
+
+// ─── setupCommand Tests ────────────────────────────────────────────
+
+describe('setupCommand', () => {
+  let tmpDir: string;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+
+  const defaultOptions: CLIOptions = {
+    command: 'setup',
+    nonInteractive: false,
+    rawArgs: ['setup'],
+  };
+
+  function makeOptions(overrides: Partial<CLIOptions> = {}): CLIOptions {
+    return { ...defaultOptions, ...overrides, configOverride: tmpDir };
+  }
+
+  beforeEach(() => {
+    tmpDir = join(tmpdir(), `setup-cmd-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    mkdirSync(tmpDir, { recursive: true });
+
+    vi.clearAllMocks();
+    // Restore mockClack defaults after clearAllMocks
+    mockClack.isCancel.mockReturnValue(false);
+    mockClack.spinner.mockReturnValue({ start: vi.fn(), stop: vi.fn() });
+
+    // Default fetch mock: successful token validation
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({
+          ok: true,
+          result: { id: 123, is_bot: true, first_name: 'TestBot', username: 'test_bot' },
+        }),
+      }),
+    );
+
+    // Spies
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit');
+    });
+    consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    // Restore only our spies — do NOT call vi.restoreAllMocks() as it breaks
+    // module-level vi.mock() factory results (writeFileSync, mockClack).
+    exitSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+    try {
+      const { rmSync } = require('node:fs');
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // best-effort cleanup
+    }
+  });
+
+  /** Read the config.yaml from the temp dir (written by setupCommand) */
+  function readConfigFromDisk(): Record<string, unknown> | null {
+    const configPath = join(tmpDir, 'config.yaml');
+    if (!existsSync(configPath)) return null;
+    const raw = readFileSync(configPath, 'utf-8');
+    return yaml.load(raw) as Record<string, unknown>;
+  }
+
+  /** Read the auth.json from the temp dir, or null if it does not exist */
+  function readAuthJsonFromDisk(): Record<string, unknown> | null {
+    const authPath = join(tmpDir, 'agents', 'auth.json');
+    if (!existsSync(authPath)) return null;
+    const raw = readFileSync(authPath, 'utf-8');
+    return JSON.parse(raw) as Record<string, unknown>;
+  }
+
+  // ── Non-Interactive Mode ───────────────────────────────────────
+
+  describe('non-interactive mode', () => {
+    beforeEach(() => {
+      process.env.TELEGRAM_BOT_TOKEN = 'test:bot_token';
+      process.env.TELEGRAM_ALLOWED_USER_IDS = '123,456';
+      delete process.env.OPENER_GO_API_KEY;
+    });
+
+    afterEach(() => {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+      delete process.env.TELEGRAM_ALLOWED_USER_IDS;
+      delete process.env.OPENER_GO_API_KEY;
+    });
+
+    it('writes config from env vars when no api key', async () => {
+      await setupCommand(makeOptions({ nonInteractive: true }));
+
+      const config = readConfigFromDisk();
+      expect(config).not.toBeNull();
+      expect(config?.telegram).toEqual({ bot_token: 'test:bot_token', allowed_user_ids: [123, 456] });
+      expect((config?.memory as Record<string, unknown>).mode).toBe('ephemeral');
+      expect((config?.llm as Record<string, unknown>).api_key).toBeUndefined();
+
+      // No auth.json when no api key
+      expect(readAuthJsonFromDisk()).toBeNull();
+    });
+
+    it('writes auth.json when OPENER_GO_API_KEY is set', async () => {
+      process.env.OPENER_GO_API_KEY = 'sk-test-key-456';
+
+      await setupCommand(makeOptions({ nonInteractive: true }));
+
+      const auth = readAuthJsonFromDisk();
+      expect(auth).not.toBeNull();
+      expect(auth?.['opencode-go']).toEqual({ type: 'api_key', key: 'sk-test-key-456' });
+    });
+
+    it('calls process.exit(1) when TELEGRAM_BOT_TOKEN is missing', async () => {
+      delete process.env.TELEGRAM_BOT_TOKEN;
+
+      await expect(setupCommand(makeOptions({ nonInteractive: true }))).rejects.toThrow('process.exit');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('TELEGRAM_BOT_TOKEN'));
+    });
+
+    it('calls process.exit(1) when TELEGRAM_ALLOWED_USER_IDS is missing', async () => {
+      delete process.env.TELEGRAM_ALLOWED_USER_IDS;
+
+      await expect(setupCommand(makeOptions({ nonInteractive: true }))).rejects.toThrow('process.exit');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('TELEGRAM_ALLOWED_USER_IDS'));
+    });
+
+    it('outputs success text with bot info', async () => {
+      await setupCommand(makeOptions({ nonInteractive: true }));
+
+      expect(mockClack.outro).toHaveBeenCalledWith(expect.stringContaining('TestBot'));
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('@test_bot'));
+    });
+
+    it('preserves existing config values when env vars are not set', async () => {
+      // Pre-create config with existing values
+      const realFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+      realFs.writeFileSync(
+        join(tmpDir, 'config.yaml'),
+        yaml.dump({
+          telegram: { bot_token: 'existing:token', allowed_user_ids: [999] },
+          llm: { provider: 'opencode-go', model: 'deepseek-v4-flash' },
+          memory: {
+            enabled: true,
+            mode: 'persistent',
+            cache: { max_entries: 50, max_size_bytes: 50_000_000 },
+          },
+          vault_directories: ['/Users/me/existing-vault'],
+        }),
+      );
+
+      // Set only token env var, rest come from existing config
+      process.env.TELEGRAM_BOT_TOKEN = 'env:token';
+      delete process.env.TELEGRAM_ALLOWED_USER_IDS;
+
+      await setupCommand(makeOptions({ nonInteractive: true }));
+
+      const config = readConfigFromDisk();
+      expect((config?.telegram as Record<string, unknown>).bot_token).toBe('env:token');
+      expect((config?.telegram as Record<string, unknown>).allowed_user_ids).toEqual([999]);
+      expect((config?.memory as Record<string, unknown>).mode).toBe('persistent');
+      expect(config?.vault_directories).toEqual(['/Users/me/existing-vault']);
+    });
+  });
+
+  // ── Interactive Mode ───────────────────────────────────────────
+
+  describe('interactive mode', () => {
+    /**
+     * Set up mock prompt responses for a full happy-path interactive flow.
+     * PASSWORD: bot token
+     * TEXT:     user IDs, cache entries, cache size, vault dirs
+     * SELECT:   api key action, memory mode, install, index
+     */
+    function setupHappyPath(overrides?: {
+      userIds?: string;
+      apiKeyAction?: string;
+      memoryMode?: string;
+      cacheEntries?: string;
+      cacheSize?: string;
+      vaultDirs?: string;
+      install?: boolean;
+      indexAction?: string;
+    }): void {
+      const o = {
+        userIds: '100,200,300',
+        apiKeyAction: 'no',
+        memoryMode: 'ephemeral',
+        cacheEntries: '50',
+        cacheSize: '500MB',
+        vaultDirs: '/Users/me/vault1, /Users/me/vault2',
+        install: false,
+        indexAction: 'no',
+        ...overrides,
+      };
+      // 1. Bot token (password)
+      mockClack.password.mockResolvedValueOnce('test:bot_token');
+      // 2. Allowed user IDs (text)
+      mockClack.text.mockResolvedValueOnce(o.userIds);
+      // 3. LLM API key action (select)
+      mockClack.select.mockResolvedValueOnce(o.apiKeyAction);
+      // 4. Memory mode (select)
+      mockClack.select.mockResolvedValueOnce(o.memoryMode);
+      // 5. Cache max entries (text)
+      mockClack.text.mockResolvedValueOnce(o.cacheEntries);
+      // 6. Cache max size (text, direct @clack/prompts call)
+      mockClack.text.mockResolvedValueOnce(o.cacheSize);
+      // 7. Vault directories (text)
+      mockClack.text.mockResolvedValueOnce(o.vaultDirs);
+      // 8. Install launchd (select)
+      mockClack.select.mockResolvedValueOnce(o.install);
+    }
+
+    it('completes full happy path and writes config', async () => {
+      setupHappyPath();
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect(config).not.toBeNull();
+
+      const t = config?.telegram as Record<string, unknown>;
+      expect(t.bot_token).toBe('test:bot_token');
+      expect(t.allowed_user_ids).toEqual([100, 200, 300]);
+
+      const m = config?.memory as Record<string, unknown>;
+      expect(m.mode).toBe('ephemeral');
+      expect((m.cache as Record<string, unknown>).max_entries).toBe(50);
+      expect((m.cache as Record<string, unknown>).max_size_bytes).toBe(524_288_000); // 500MB
+
+      expect(config?.vault_directories).toEqual(['/Users/me/vault1', '/Users/me/vault2']);
+      expect((config?.llm as Record<string, unknown>).api_key).toBeUndefined();
+    });
+
+    it('exits when bot token password returns undefined and no existing', async () => {
+      mockClack.password.mockResolvedValueOnce('');
+
+      await expect(setupCommand(makeOptions())).rejects.toThrow('process.exit');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(mockClack.cancel).toHaveBeenCalledWith(expect.stringContaining('Bot token is required'));
+    });
+
+    it('parses user IDs and filters invalid entries', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100,abc,200,xyz,300');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect((config?.telegram as Record<string, unknown>).allowed_user_ids).toEqual([100, 200, 300]);
+    });
+
+    it('keeps existing LLM API key when select is "keep"', async () => {
+      // Pre-create config with existing api key
+      const realFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+      realFs.writeFileSync(
+        join(tmpDir, 'config.yaml'),
+        yaml.dump({
+          telegram: { bot_token: 'existing:token', allowed_user_ids: [999] },
+          llm: { provider: 'opencode-go', model: 'deepseek-v4-flash', api_key: 'sk-existing-key' },
+          memory: { enabled: true, mode: 'ephemeral' },
+          vault_directories: [],
+        }),
+      );
+
+      mockClack.password.mockResolvedValueOnce('existing:token');
+      mockClack.text.mockResolvedValueOnce(''); // keep existing user IDs
+      mockClack.select.mockResolvedValueOnce('keep'); // keep api key
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect((config?.llm as Record<string, unknown>).api_key).toBe('sk-existing-key');
+    });
+
+    it('replaces existing LLM API key when select is "replace"', async () => {
+      const realFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+      realFs.writeFileSync(
+        join(tmpDir, 'config.yaml'),
+        yaml.dump({
+          telegram: { bot_token: 'existing:token', allowed_user_ids: [999] },
+          llm: { provider: 'opencode-go', model: 'deepseek-v4-flash', api_key: 'sk-old-key' },
+          memory: { enabled: true, mode: 'ephemeral' },
+          vault_directories: [],
+        }),
+      );
+
+      mockClack.password.mockResolvedValueOnce('existing:token'); // bot token
+      mockClack.text.mockResolvedValueOnce(''); // user IDs
+      mockClack.select.mockResolvedValueOnce('replace'); // replace key
+      mockClack.password.mockResolvedValueOnce('sk-new-key'); // new key
+      mockClack.select.mockResolvedValueOnce('ephemeral'); // memory
+      mockClack.text.mockResolvedValueOnce(''); // cache entries
+      mockClack.text.mockResolvedValueOnce(''); // cache size
+      mockClack.text.mockResolvedValueOnce(''); // vault dirs
+      mockClack.select.mockResolvedValueOnce(false); // install
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect((config?.llm as Record<string, unknown>).api_key).toBe('sk-new-key');
+
+      // Verify auth.json was written with new key
+      const auth = readAuthJsonFromDisk();
+      expect(auth).not.toBeNull();
+      expect(auth?.['opencode-go']).toEqual({ type: 'api_key', key: 'sk-new-key' });
+    });
+
+    it('adds LLM API key when no existing key and user says yes', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('yes'); // add api key
+      mockClack.password.mockResolvedValueOnce('sk-new-key');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect((config?.llm as Record<string, unknown>).api_key).toBe('sk-new-key');
+
+      const auth = readAuthJsonFromDisk();
+      expect(auth?.['opencode-go']).toEqual({ type: 'api_key', key: 'sk-new-key' });
+    });
+
+    it('does not configure LLM API key when user says no (no existing)', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect((config?.llm as Record<string, unknown>).api_key).toBeUndefined();
+      expect(readAuthJsonFromDisk()).toBeNull();
+    });
+
+    it('selects persistent memory mode', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('persistent');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect((config?.memory as Record<string, unknown>).mode).toBe('persistent');
+      expect((config?.memory as Record<string, unknown>).qmd).toEqual({ enabled: true, binary_path: 'qmd' });
+    });
+
+    it('falls back to existing cache entries on invalid input', async () => {
+      // Pre-create config with custom cache max entries
+      const realFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+      realFs.writeFileSync(
+        join(tmpDir, 'config.yaml'),
+        yaml.dump({
+          telegram: { bot_token: 'existing:token', allowed_user_ids: [999] },
+          llm: { provider: 'opencode-go', model: 'deepseek-v4-flash' },
+          memory: { enabled: true, mode: 'ephemeral', cache: { max_entries: 75, max_size_bytes: 100_000_000 } },
+          vault_directories: [],
+        }),
+      );
+
+      mockClack.password.mockResolvedValueOnce('existing:token');
+      mockClack.text.mockResolvedValueOnce(''); // user IDs
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('abc'); // invalid entries
+      mockClack.text.mockResolvedValueOnce(''); // cache size (keep existing)
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect((config?.memory as Record<string, unknown>).cache).toMatchObject({ max_entries: 75 });
+    });
+
+    it('parses cache size from text prompt', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('2GB');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      const cache = (config?.memory as Record<string, unknown>).cache as Record<string, unknown>;
+      expect(cache.max_size_bytes).toBe(2_147_483_648); // 2GB in bytes
+    });
+
+    it('validates cache size input via the validate callback', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      // The 4th text call is the cache size prompt with validate:
+      // We need to capture the validate function from the text call arguments
+      mockClack.text.mockImplementationOnce((_opts: { validate?: (v: string | undefined) => string | undefined }) => {
+        // Return a value — we just need to inspect the validate fn
+        return Promise.resolve('500MB');
+      });
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      // Get the text call args for the cache size prompt (3rd text call, index 2)
+      const textCalls = mockClack.text.mock.calls;
+      const cacheSizeCall = textCalls[2]!;
+      const opts = cacheSizeCall[0] as { validate?: (v: string | undefined) => string | undefined };
+      expect(opts.validate).toBeInstanceOf(Function);
+      expect(opts.validate?.('500MB')).toBeUndefined();
+      expect(opts.validate?.('xyz')).toContain('Invalid size');
+    });
+
+    it('filters tilde paths from vault directories with warning', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('/Users/me/real, ~/invalid, /Users/me/also-real');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      const config = readConfigFromDisk();
+      expect(config?.vault_directories).toEqual(['/Users/me/real', '/Users/me/also-real']);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('Skipping'));
+      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('~'));
+    });
+
+    it('exits when bot token validation fails', async () => {
+      // Override fetch to return failure
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          json: vi.fn().mockResolvedValue({ ok: false, description: 'Invalid token' }),
+        }),
+      );
+
+      mockClack.password.mockResolvedValueOnce('bad:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('');
+      // Should NOT reach install select — exits in validation
+
+      await expect(setupCommand(makeOptions())).rejects.toThrow('process.exit');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(mockClack.cancel).toHaveBeenCalledWith(expect.stringContaining('validation failed'));
+    });
+
+    it('recovers API key from auth.json when not provided via prompts', async () => {
+      // Pre-create auth.json in the agents subdirectory
+      const agentsDir = join(tmpDir, 'agents');
+      mkdirSync(agentsDir, { recursive: true });
+      const realFs = await vi.importActual<typeof import('node:fs')>('node:fs');
+      realFs.writeFileSync(
+        join(agentsDir, 'auth.json'),
+        `${JSON.stringify({ 'opencode-go': { type: 'api_key', key: 'sk-from-auth-json' } }, null, 2)}\n`,
+      );
+
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      // apiKey should be recovered from auth.json even though user said "no"
+      const config = readConfigFromDisk();
+      expect((config?.llm as Record<string, unknown>).api_key).toBe('sk-from-auth-json');
+
+      // auth.json should be written again (it already exists but writeAuthJson is called)
+      const auth = readAuthJsonFromDisk();
+      expect(auth).not.toBeNull();
+    });
+
+    it('calls installCommand when install prompt is yes', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(true); // Yes, install
+
+      await setupCommand(makeOptions());
+
+      expect(mockInstall.installCommand).toHaveBeenCalledWith(makeOptions());
+    });
+
+    it('skips installCommand when install prompt is no', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('ephemeral');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('');
+      mockClack.select.mockResolvedValueOnce(false); // No, skip install
+
+      await setupCommand(makeOptions());
+
+      expect(mockInstall.installCommand).not.toHaveBeenCalled();
+    });
+
+    it('calls indexCommand for persistent mode with vaults when user says yes', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('persistent');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('/Users/me/vault');
+      mockClack.select.mockResolvedValueOnce(false); // No, skip install
+      mockClack.select.mockResolvedValueOnce('yes'); // Yes, build index
+
+      await setupCommand(makeOptions());
+
+      expect(mockIndex.indexCommand).toHaveBeenCalledWith(expect.objectContaining({ rawArgs: ['index', 'build'] }));
+    });
+
+    it('skips indexCommand for persistent mode with vaults when user says no', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('persistent');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce('/Users/me/vault');
+      mockClack.select.mockResolvedValueOnce(false); // No, skip install
+      mockClack.select.mockResolvedValueOnce('no'); // No, skip index
+
+      await setupCommand(makeOptions());
+
+      expect(mockIndex.indexCommand).not.toHaveBeenCalled();
+    });
+
+    it('skips index prompt entirely when no vault directories configured', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('no');
+      mockClack.select.mockResolvedValueOnce('persistent');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.text.mockResolvedValueOnce('100MB');
+      mockClack.text.mockResolvedValueOnce(''); // No vault directories
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      // install select was the last prompt; index select was never shown
+      expect(mockClack.select).toHaveBeenCalledTimes(3); // api key, memory mode, install
+      expect(mockIndex.indexCommand).not.toHaveBeenCalled();
+    });
+
+    it('shows success outro with correct summary', async () => {
+      mockClack.password.mockResolvedValueOnce('test:token');
+      mockClack.text.mockResolvedValueOnce('100');
+      mockClack.select.mockResolvedValueOnce('yes');
+      mockClack.password.mockResolvedValueOnce('sk-my-key');
+      mockClack.select.mockResolvedValueOnce('persistent');
+      mockClack.text.mockResolvedValueOnce('200');
+      mockClack.text.mockResolvedValueOnce('1GB');
+      mockClack.text.mockResolvedValueOnce('/Users/me/vault');
+      mockClack.select.mockResolvedValueOnce(false);
+
+      await setupCommand(makeOptions());
+
+      expect(mockClack.outro).toHaveBeenCalledWith(expect.stringContaining('Config written to'));
+      expect(mockClack.outro).toHaveBeenCalledWith(expect.stringContaining('TestBot'));
+      expect(mockClack.outro).toHaveBeenCalledWith(expect.stringContaining('Memory mode: persistent'));
+      expect(mockClack.outro).toHaveBeenCalledWith(expect.stringContaining('Cache: 200 entries'));
+      expect(mockClack.outro).toHaveBeenCalledWith(expect.stringContaining('LLM API key configured'));
+      expect(mockClack.outro).toHaveBeenCalledWith(expect.stringContaining('Vault directories'));
+    });
+  });
+});
+
+// ─── Helper: simulate loadExistingConfig ────────────────────────────
 
 function simulateLoadExistingConfigDefaults(configDir: string): SetupState {
   const { existsSync: exists, readFileSync: read } = require('node:fs');

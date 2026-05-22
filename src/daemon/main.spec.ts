@@ -236,4 +236,117 @@ describe('startDaemon', () => {
       }), // memory context
     );
   });
+
+  // ──────────────────────────────────────────────────────────────────
+  // Signal handler behaviour
+  // ──────────────────────────────────────────────────────────────────
+
+  it('SIGINT triggers controller.stop and registry.disposeAll', async () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((): never => undefined as never);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: true, result: { first_name: 'TestBot' } }),
+      }),
+    );
+
+    await startDaemon();
+
+    // Extract the SIGINT handler — process.on is mocked, handlers stored in spy
+    const sigintHandler = onSpy.mock.calls.find((call: unknown[]) => call[0] === 'SIGINT')?.[1] as () => void;
+    expect(sigintHandler).toBeInstanceOf(Function);
+
+    // Invoke the handler (calls async shutdown internally)
+    sigintHandler();
+
+    // Flush microtasks so the async shutdown completes
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const controller = mockCreateBotController.mock.results[0]?.value;
+    const registry = mockCreateSessionRegistry.mock.results[0]?.value;
+
+    expect(controller.stop).toHaveBeenCalledOnce();
+    expect(registry.disposeAll).toHaveBeenCalledOnce();
+    expect(exitSpy).toHaveBeenCalledWith(0);
+  });
+
+  it('double SIGINT is idempotent (shuttingDown flag)', async () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((): never => undefined as never);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: true, result: { first_name: 'TestBot' } }),
+      }),
+    );
+
+    await startDaemon();
+
+    const sigintHandler = onSpy.mock.calls.find((call: unknown[]) => call[0] === 'SIGINT')?.[1] as () => void;
+
+    // Fire SIGINT twice — second call early-returns via shuttingDown flag
+    sigintHandler();
+    sigintHandler();
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    const controller = mockCreateBotController.mock.results[0]?.value;
+    const registry = mockCreateSessionRegistry.mock.results[0]?.value;
+
+    expect(controller.stop).toHaveBeenCalledOnce();
+    expect(registry.disposeAll).toHaveBeenCalledOnce();
+    expect(exitSpy).toHaveBeenCalledOnce();
+  });
+
+  it('unhandledRejection logs error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: true, result: { first_name: 'TestBot' } }),
+      }),
+    );
+
+    await startDaemon();
+
+    const rejectionHandler = onSpy.mock.calls.find((call: unknown[]) => call[0] === 'unhandledRejection')?.[1] as (
+      reason: unknown,
+    ) => void;
+    expect(rejectionHandler).toBeInstanceOf(Function);
+
+    const testError = new Error('test rejection');
+    rejectionHandler(testError);
+
+    // The logger is shared across createCLILogger calls via mockReturnValue
+    const logger = mockCreateCLILogger.mock.results[0]?.value;
+    expect(logger.error).toHaveBeenCalledWith({ err: testError }, 'Unhandled promise rejection');
+  });
+
+  it('uncaughtException logs error, console.errors, and exits with code 1', async () => {
+    vi.spyOn(process, 'exit').mockImplementation((): never => {
+      throw new Error('process.exit');
+    });
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue({ ok: true, result: { first_name: 'TestBot' } }),
+      }),
+    );
+
+    await startDaemon();
+
+    const exceptionHandler = onSpy.mock.calls.find((call: unknown[]) => call[0] === 'uncaughtException')?.[1] as (
+      err: Error,
+    ) => void;
+    expect(exceptionHandler).toBeInstanceOf(Function);
+
+    const testError = new Error('fatal');
+    expect(() => exceptionHandler(testError)).toThrow('process.exit');
+
+    const logger = mockCreateCLILogger.mock.results[0]?.value;
+    expect(logger.error).toHaveBeenCalledWith({ err: testError }, 'Uncaught exception');
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Fatal error:', 'fatal');
+  });
 });

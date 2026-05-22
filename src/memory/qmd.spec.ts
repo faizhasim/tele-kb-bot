@@ -190,33 +190,33 @@ describe('parseOutput (via search)', () => {
     const r = search('x');
     expect(r).not.toBeNull();
     expect(r).toHaveLength(2);
-    expect(r![0]!.filePath).toBe('/a.md');
-    expect(r![0]!.score).toBe(0.9);
-    expect(r![0]!.snippet).toBe('alpha');
-    expect(r![1]!.filePath).toBe('/b.md');
-    expect(r![1]!.score).toBe(0.8);
-    expect(r![1]!.snippet).toBe('beta');
+    expect(r?.[0]?.filePath).toBe('/a.md');
+    expect(r?.[0]?.score).toBe(0.9);
+    expect(r?.[0]?.snippet).toBe('alpha');
+    expect(r?.[1]?.filePath).toBe('/b.md');
+    expect(r?.[1]?.score).toBe(0.8);
+    expect(r?.[1]?.snippet).toBe('beta');
   });
 
   it('handles file field name as fallback for path', () => {
     mockDetectSuccess(JSON.stringify([{ file: '/doc.md', score: 0.7, snippet: 'doc content' }]));
     const r = search('x');
     expect(r).not.toBeNull();
-    expect(r![0]!.filePath).toBe('/doc.md');
+    expect(r?.[0]?.filePath).toBe('/doc.md');
   });
 
   it('handles filePath field name as fallback for path', () => {
     mockDetectSuccess(JSON.stringify([{ filePath: '/note.md', score: 0.6, snippet: 'note content' }]));
     const r = search('x');
     expect(r).not.toBeNull();
-    expect(r![0]!.filePath).toBe('/note.md');
+    expect(r?.[0]?.filePath).toBe('/note.md');
   });
 
   it('prefers path over file and filePath', () => {
     mockDetectSuccess(JSON.stringify([{ path: '/winner.md', file: '/loser.md', score: 0.5, snippet: 'x' }]));
     const r = search('x');
     expect(r).not.toBeNull();
-    expect(r![0]!.filePath).toBe('/winner.md');
+    expect(r?.[0]?.filePath).toBe('/winner.md');
   });
 
   it('handles a single object with results array', () => {
@@ -251,21 +251,21 @@ describe('parseOutput (via search)', () => {
     mockDetectSuccess(JSON.stringify([{ path: '/a.md', relevance: 0.95, snippet: 'rel test' }]));
     const r = search('x');
     expect(r).not.toBeNull();
-    expect(r![0]!.score).toBe(0.95);
+    expect(r?.[0]?.score).toBe(0.95);
   });
 
   it('uses content field as fallback for snippet', () => {
     mockDetectSuccess(JSON.stringify([{ path: '/a.md', score: 0.5, content: 'from content field' }]));
     const r = search('x');
     expect(r).not.toBeNull();
-    expect(r![0]!.snippet).toBe('from content field');
+    expect(r?.[0]?.snippet).toBe('from content field');
   });
 
   it('uses text field as fallback for snippet', () => {
     mockDetectSuccess(JSON.stringify([{ path: '/a.md', score: 0.5, text: 'from text field' }]));
     const r = search('x');
     expect(r).not.toBeNull();
-    expect(r![0]!.snippet).toBe('from text field');
+    expect(r?.[0]?.snippet).toBe('from text field');
   });
 
   it('truncates snippet to 200 characters', () => {
@@ -273,16 +273,16 @@ describe('parseOutput (via search)', () => {
     mockDetectSuccess(JSON.stringify([{ path: '/a.md', score: 0.5, snippet: long }]));
     const r = search('x');
     expect(r).not.toBeNull();
-    expect(r![0]!.snippet.length).toBe(200);
+    expect(r?.[0]?.snippet.length).toBe(200);
   });
 
   it('handles missing fields gracefully', () => {
     mockDetectSuccess(JSON.stringify([{}]));
     const r = search('x');
     expect(r).not.toBeNull();
-    expect(r![0]!.filePath).toBe('');
-    expect(r![0]!.score).toBe(0);
-    expect(r![0]!.snippet).toBe('');
+    expect(r?.[0]?.filePath).toBe('');
+    expect(r?.[0]?.score).toBe(0);
+    expect(r?.[0]?.snippet).toBe('');
   });
 
   it('handles null values in fields (?? falls through)', () => {
@@ -290,9 +290,9 @@ describe('parseOutput (via search)', () => {
     const r = search('x');
     expect(r).not.toBeNull();
     // nullish coalescing: null ?? fallback = fallback
-    expect(r![0]!.filePath).toBe(''); // null ?? '' → ''
-    expect(r![0]!.score).toBe(0); // null ?? 0 → 0
-    expect(r![0]!.snippet).toBe(''); // null ?? '' → ''
+    expect(r?.[0]?.filePath).toBe(''); // null ?? '' → ''
+    expect(r?.[0]?.score).toBe(0); // null ?? 0 → 0
+    expect(r?.[0]?.snippet).toBe(''); // null ?? '' → ''
   });
 
   it('handles results object with no results key', () => {
@@ -346,7 +346,7 @@ describe('search', () => {
     const r = search('test');
     expect(r).not.toBeNull();
     expect(r).toHaveLength(1);
-    expect(r![0]!.filePath).toBe('/a.md');
+    expect(r?.[0]?.filePath).toBe('/a.md');
   });
 });
 
@@ -377,7 +377,7 @@ describe('vsearch', () => {
     const r = vsearch('test', 5);
     expect(r).not.toBeNull();
     expect(r).toHaveLength(1);
-    expect(r![0]!.filePath).toBe('/v.md');
+    expect(r?.[0]?.filePath).toBe('/v.md');
   });
 
   it('uses default maxResults of 5', () => {
@@ -419,7 +419,7 @@ describe('query', () => {
     const r = query('test', 5);
     expect(r).not.toBeNull();
     expect(r).toHaveLength(1);
-    expect(r![0]!.filePath).toBe('/h.md');
+    expect(r?.[0]?.filePath).toBe('/h.md');
   });
 
   it('uses default maxResults of 5', () => {

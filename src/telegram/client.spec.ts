@@ -4,11 +4,10 @@
  * All network calls are mocked — no real API calls.
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { Effect } from 'effect';
-
-import { createTelegramClient, sendText, sendDocument, sendChatAction, verifyToken } from './client';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { splitIntoChunks, truncateCaption } from './chunking';
+import { createTelegramClient, sendChatAction, sendDocument, sendText, verifyToken } from './client';
 
 // ─── Mocks ──────────────────────────────────────────────────────────
 

@@ -106,7 +106,7 @@ function getBinaryFromPlist(plist: string): string {
     const line = lines[i];
     if (!line) continue;
     const match = line.trim().match(/<string>(.*?)<\/string>/);
-    if (match && match[1]) return match[1];
+    if (match?.[1]) return match[1];
   }
   return '';
 }

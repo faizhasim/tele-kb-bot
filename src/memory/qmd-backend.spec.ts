@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QmdMemoryBackend } from './qmd-backend';
 
 // Create mock functions before vi.mock runs (hoisted via vi.hoisted)

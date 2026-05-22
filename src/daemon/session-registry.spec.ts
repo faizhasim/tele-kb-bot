@@ -7,8 +7,8 @@
  * @module
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentSession } from '@mariozechner/pi-coding-agent';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Config } from '../config/schema';
 
 // ─── Hoisted mocks ──────────────────────────────────────────────────

@@ -5,18 +5,18 @@
  * Effect-based functions tested with ManagedRuntime.runPromise.
  */
 
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { FileSystem } from '@effect/platform/FileSystem';
 import { BunFileSystem } from '@effect/platform-bun';
 import * as S from '@effect/schema/Schema';
 import { Effect, Layer, ManagedRuntime } from 'effect';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { EffectLoggerLive } from '../logger';
 import { getDefaultConfig, mergeConfig, validateSemantic } from './defaults';
-import { loadConfig, loadConfigFromEnv, loadConfigSync, ConfigLoadError, ConfigValidationError } from './loader';
-import { resolveConfigDir, resolveConfigPath, getConfigSubdirs, ensureConfigDirsSync, ensureConfigDirs } from './paths';
+import { ConfigLoadError, ConfigValidationError, loadConfig, loadConfigFromEnv, loadConfigSync } from './loader';
+import { ensureConfigDirs, ensureConfigDirsSync, getConfigSubdirs, resolveConfigDir, resolveConfigPath } from './paths';
 import type { Config } from './schema';
 import { ConfigSchema, redactConfig } from './schema';
 

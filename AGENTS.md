@@ -32,9 +32,22 @@ Telegram → GrammY Bot (long-polling) → PiSession per chat → LLM (deepseek-
 
 ```bash
 bun run dev          # Run in development mode
-bun test             # Run tests (co-located .spec.ts files)
+bun run test         # Run tests (co-located .spec.ts files)
+bun run test:coverage # Run tests with coverage report
 bun run build        # Build arm64 binary
 ```
+
+## Agent Workflow
+
+When making changes, run these checks at the end of each work loop:
+
+```bash
+bun run format       # Format code with Biome
+bun run lint:fix     # Lint and auto-fix with Biome
+bun run test:coverage # Run tests + coverage report
+```
+
+Always run all three before marking work as complete. If any check fails, investigate and fix before continuing.
 
 ## Project Structure
 

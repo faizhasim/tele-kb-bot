@@ -1,18 +1,17 @@
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { FileSystem } from '@effect/platform/FileSystem';
 import { BunFileSystem } from '@effect/platform-bun';
 import { Effect, Layer, ManagedRuntime } from 'effect';
 import { describe, expect, it } from 'vitest';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { getDefaultConfig } from '../config/defaults';
 import { EffectLoggerLive } from '../logger';
-import { indexDocuments } from './search';
 import {
   appendMemorySync,
+  appendTodaySync,
   appendToMemory,
   appendToToday,
-  appendTodaySync,
   buildSearchIndex,
   createMemoryContext,
   dailyPath,
@@ -29,6 +28,7 @@ import {
   writeScratchpadSync,
   yesterdayDate,
 } from './manager';
+import { indexDocuments } from './search';
 
 // ─── Pure Function Tests ────────────────────────────────────────────
 
@@ -209,8 +209,8 @@ describe('searchMemory (pure wrapper)', () => {
     const state = indexDocuments([{ path: 'test.md', content: 'The quick brown fox jumps over the lazy dog' }]);
     const results = searchMemory(state, 'fox');
     expect(results).toHaveLength(1);
-    expect(results[0]!.filePath).toBe('test.md');
-    expect(results[0]!.score).toBeGreaterThan(0);
+    expect(results[0]?.filePath).toBe('test.md');
+    expect(results[0]?.score).toBeGreaterThan(0);
   });
 
   it('returns empty array for non-matching query', () => {
@@ -232,8 +232,8 @@ describe('indexDocuments (pure building block of buildSearchIndex)', () => {
     expect(state.docCount).toBe(2);
     expect(state.docs).toHaveLength(2);
     expect(state.avgDocLen).toBeGreaterThan(0);
-    expect(state.docs[0]!.path).toBe('memory/MEMORY.md');
-    expect(state.docs[1]!.path).toBe('memory/daily/2026-05-21.md');
+    expect(state.docs[0]?.path).toBe('memory/MEMORY.md');
+    expect(state.docs[1]?.path).toBe('memory/daily/2026-05-21.md');
   });
 });
 
@@ -429,7 +429,7 @@ describe('Effect memory operations', () => {
             typeCount: typeResults.length,
             effectCount: effectResults.length,
             emptyCount: emptyResults.length,
-            typeSnippet: typeResults.length > 0 ? typeResults[0]!.snippet : '',
+            typeSnippet: typeResults.length > 0 ? typeResults[0]?.snippet : '',
           };
         }),
       ),
@@ -496,7 +496,7 @@ describe('createMemoryContext', () => {
       const results = await ctx.backend.search('bm25', 5);
 
       expect(results.length).toBeGreaterThan(0);
-      expect(results[0]!.score).toBeGreaterThan(0);
+      expect(results[0]?.score).toBeGreaterThan(0);
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

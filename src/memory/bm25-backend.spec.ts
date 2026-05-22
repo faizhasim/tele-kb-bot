@@ -1,7 +1,7 @@
-import { describe, expect, it, afterEach } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 import { BM25MemoryBackend } from './bm25-backend';
 
 describe('BM25MemoryBackend', () => {
