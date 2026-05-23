@@ -94,20 +94,32 @@ vi.mock('../config/paths', () => ({
 
 vi.mock('../logger', () => {
   const MockLoggerTag = Context.GenericTag('@tele-kb-bot/logger');
+  const mockLayer = vi.fn(() =>
+    Layer.effect(
+      MockLoggerTag,
+      Effect.sync(() => ({
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        fatal: vi.fn(),
+      })),
+    ),
+  );
   return {
     createCLILogger: mockCreateCLILogger,
-    EffectLoggerLive: vi.fn(() =>
-      Layer.effect(
-        MockLoggerTag,
-        Effect.sync(() => ({
-          debug: vi.fn(),
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-          fatal: vi.fn(),
-        })),
-      ),
-    ),
+    EffectLoggerLive: mockLayer,
+    EffectLoggerLiveWithFile: mockLayer,
+    createRollingLogWriter: vi.fn(),
+    resolveLogFile: vi.fn(),
+    createDaemonPinoLogger: vi.fn().mockReturnValue({
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      fatal: vi.fn(),
+      level: 30,
+    }),
   };
 });
 

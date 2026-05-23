@@ -12,19 +12,14 @@ import { Effect, Layer, ManagedRuntime } from 'effect';
 import { loadConfig } from '../config/loader';
 import { ensureConfigDirs, resolveConfigDir } from '../config/paths';
 import { BINARY_NAME } from '../constants';
-import { createCLILogger, EffectLoggerLive } from '../logger';
+import { createCLILogger, createDaemonPinoLogger, EffectLoggerLiveWithFile, resolveLogFile } from '../logger';
 import { createMemoryContext } from '../memory/manager';
 import { createBotController } from './bot';
 import { createSessionRegistry } from './session-registry';
 
 // ─── Runtime ────────────────────────────────────────────────────────
 
-const daemonLayer = Layer.merge(
-  BunFileSystem.layer,
-  EffectLoggerLive(BINARY_NAME, (process.env.LOG_LEVEL as string) ?? 'info'),
-);
-
-const runtime = ManagedRuntime.make(daemonLayer);
+// (Runtime created inside startDaemon after config loads — uses EffectLoggerLiveWithFile)
 
 // ─── Signal Handling ────────────────────────────────────────────────
 
@@ -65,54 +60,71 @@ const setupSignalHandlers = (
 
 /**
  * Start the tele-kb-bot daemon.
+ * Loads config first, then creates a runtime with file-logging layer.
  */
 const startDaemon = (configOverride?: string): Promise<void> =>
-  runtime.runPromise(
-    Effect.gen(function* () {
-      const log = createCLILogger(BINARY_NAME);
-      log.info('tele-kb-bot daemon starting...');
+  Effect.gen(function* () {
+    // Use CLI logger initially (before config is loaded and log file known)
+    const log = createCLILogger(BINARY_NAME);
+    log.info('tele-kb-bot daemon starting...');
 
-      // Load config
-      const configDir = configOverride ?? resolveConfigDir();
-      const { config, configDir: resolvedDir } = yield* loadConfig(configDir);
-      log.info(
-        {
-          configDir: resolvedDir,
-          provider: config.llm.provider,
-          model: config.llm.model,
-        },
-        'Config loaded',
-      );
+    const configDir = configOverride ?? resolveConfigDir();
+    const { config, configDir: resolvedDir } = yield* loadConfig(configDir);
 
-      // Ensure directories
-      yield* ensureConfigDirs(resolvedDir);
+    // Create a file+stdout logger now that configDir is known
+    const daemonLog = createDaemonPinoLogger(BINARY_NAME, process.env.LOG_LEVEL ?? 'info', resolvedDir);
+    daemonLog.info({ configDir: resolvedDir, provider: config.llm.provider, model: config.llm.model }, 'Config loaded');
 
-      // Initialise memory backend
-      const memoryCtx = yield* Effect.promise(() => createMemoryContext(config, resolvedDir));
-      log.info({ mode: config.memory.mode, available: memoryCtx.backend.isAvailable() }, 'Memory backend initialised');
+    // Create runtime with FileSystem + Effect-based file-logging layer
+    const daemonLayer = Layer.merge(
+      BunFileSystem.layer,
+      EffectLoggerLiveWithFile(BINARY_NAME, process.env.LOG_LEVEL ?? 'info', resolvedDir),
+    );
+    const daemonRuntime = ManagedRuntime.make(daemonLayer);
 
-      // Create services
-      const registry = createSessionRegistry(config, resolvedDir);
+    // Log file destination
+    daemonLog.info({ path: resolveLogFile(resolvedDir) }, 'Log file');
 
-      // Verify bot token via Telegram API
-      const tokenResp = yield* Effect.promise(() =>
-        fetch(`https://api.telegram.org/bot${config.telegram.bot_token}/getMe`).then((r) => r.json()),
-      );
-      const tokenData = tokenResp as { ok: boolean; result?: { first_name: string }; description?: string };
-      if (!tokenData.ok) {
-        log.error({ error: tokenData.description }, 'Bot token verification failed');
-        console.error("ERROR: Invalid Telegram bot token. Run 'tele-kb-bot setup' to reconfigure.");
-        process.exit(1);
-      }
-      log.info({ botName: tokenData.result?.first_name }, 'Bot token verified');
+    return yield* Effect.promise(() =>
+      daemonRuntime.runPromise(
+        Effect.gen(function* () {
+          yield* ensureConfigDirs(resolvedDir);
 
-      // Create controller with memory context
-      const controller = createBotController(config, registry, memoryCtx);
-      setupSignalHandlers(controller, registry);
+          const memoryCtx = yield* Effect.promise(() => createMemoryContext(config, resolvedDir));
+          daemonLog.info(
+            { mode: config.memory.mode, available: memoryCtx.backend.isAvailable() },
+            'Memory backend initialised',
+          );
 
-      log.info('Starting bot polling...');
-      yield* Effect.promise(() => controller.start());
-    }),
+          const registry = createSessionRegistry(config, resolvedDir);
+
+          const tokenResp = yield* Effect.promise(() =>
+            fetch(`https://api.telegram.org/bot${config.telegram.bot_token}/getMe`).then((r) => r.json()),
+          );
+          const tokenData = tokenResp as { ok: boolean; result?: { first_name: string }; description?: string };
+          if (!tokenData.ok) {
+            daemonLog.error({ error: tokenData.description }, 'Bot token verification failed');
+            console.error("ERROR: Invalid Telegram bot token. Run 'tele-kb-bot setup' to reconfigure.");
+            process.exit(1);
+          }
+          daemonLog.info({ botName: tokenData.result?.first_name }, 'Bot token verified');
+
+          const controller = createBotController(config, registry, memoryCtx);
+          setupSignalHandlers(controller, registry);
+
+          daemonLog.info('Starting bot polling...');
+          yield* Effect.promise(() => controller.start());
+        }),
+      ),
+    );
+  }).pipe(
+    Effect.provide(
+      Layer.merge(
+        BunFileSystem.layer,
+        EffectLoggerLiveWithFile(BINARY_NAME, process.env.LOG_LEVEL ?? 'info', resolveConfigDir()),
+      ),
+    ),
+    Effect.runPromise,
   );
 
 export { startDaemon };
