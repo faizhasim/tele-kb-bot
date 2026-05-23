@@ -1000,9 +1000,11 @@ describe('setupCommand', () => {
 
       await setupCommand(makeOptions());
 
-      // Get the text call args for the cache size prompt (3rd text call, index 2)
       const textCalls = mockClack.text.mock.calls;
-      const cacheSizeCall = textCalls[2]!;
+      const cacheSizeCall = textCalls[2];
+      if (!cacheSizeCall) {
+        throw new Error('Expected at least 3 text prompts (cache size)');
+      }
       const opts = cacheSizeCall[0] as { validate?: (v: string | undefined) => string | undefined };
       expect(opts.validate).toBeInstanceOf(Function);
       expect(opts.validate?.('500MB')).toBeUndefined();

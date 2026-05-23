@@ -68,5 +68,17 @@
       "indentWidth": 2
     }
   },
+  "overrides": [
+    {
+      "includes": ["**/*.spec.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          }
+        }
+      }
+    }
+  ],
   "plugins": []
 }

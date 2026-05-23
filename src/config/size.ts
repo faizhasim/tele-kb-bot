@@ -36,7 +36,9 @@ const parseSize = (input: string): number | null => {
   const match = trimmed.match(SIZE_RE);
   if (!match) return null;
 
-  const value = Number.parseFloat(match[1]!);
+  const rawValue = match[1];
+  if (rawValue === undefined) return null;
+  const value = Number.parseFloat(rawValue);
   if (!Number.isFinite(value) || value < 0) return null;
 
   const suffix = (match[2] ?? 'B').toUpperCase();

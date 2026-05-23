@@ -69,8 +69,11 @@ describe('formatSize', () => {
     const sizes = ['500 MB', '2 GB', '128 KB', '1 TB'];
     for (const s of sizes) {
       const bytes = parseSize(s);
-      expect(bytes).not.toBeNull();
-      expect(formatSize(bytes!)).toBe(s);
+      if (bytes === null) {
+        expect(bytes).not.toBeNull();
+        continue;
+      }
+      expect(formatSize(bytes)).toBe(s);
     }
   });
 });
