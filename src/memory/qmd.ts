@@ -45,6 +45,7 @@ const run = (args: Array<string>, timeout = 30_000): string | null => {
       encoding: 'utf-8',
       stdio: 'pipe',
       timeout,
+      env: { ...process.env, QMD_FORCE_CPU: '1' },
     });
   } catch {
     return null;

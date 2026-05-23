@@ -114,6 +114,7 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
       (result.bot as Record<string, unknown>).streaming_preview = b.streaming_preview;
     if (typeof b.text_chunk_size === 'number')
       (result.bot as Record<string, unknown>).text_chunk_size = b.text_chunk_size;
+    if (typeof b.max_sessions === 'number') (result.bot as Record<string, unknown>).max_sessions = b.max_sessions;
   }
 
   // ── Root-level fields ───────────────────────────────────────────
@@ -143,6 +144,7 @@ const applyEnvOverrides = (config: Config): Config => {
   const apiKey = process.env.OPENER_GO_API_KEY;
   const qmdPath = process.env.QMD_BINARY_PATH;
   const vaultDirs = process.env.VAULT_DIRECTORIES;
+  const maxSessionsStr = process.env.TELEGRAM_BOT_MAX_SESSIONS;
 
   return {
     telegram: {
@@ -162,7 +164,18 @@ const applyEnvOverrides = (config: Config): Config => {
       ...config.memory,
       qmd: qmdPath ? { ...config.memory.qmd, binary_path: qmdPath } : config.memory.qmd,
     },
-    bot: config.bot,
+    bot: {
+      ...config.bot,
+      ...(maxSessionsStr !== undefined
+        ? (() => {
+            const parsed = Number(maxSessionsStr);
+            if (Number.isFinite(parsed) && parsed >= 1) {
+              return { max_sessions: parsed };
+            }
+            return {};
+          })()
+        : {}),
+    },
     vault_directories: vaultDirs
       ? vaultDirs
           .split(PATH_SEPARATOR)
@@ -181,7 +194,8 @@ const hasEnvOverrides = (): boolean =>
     process.env.TELEGRAM_BOT_TOKEN ||
     process.env.TELEGRAM_ALLOWED_USER_IDS ||
     process.env.OPENER_GO_API_KEY ||
-    process.env.VAULT_DIRECTORIES
+    process.env.VAULT_DIRECTORIES ||
+    process.env.TELEGRAM_BOT_MAX_SESSIONS
   );
 
 // ─── File Reading (handles PlatformError) ────────────────────────────

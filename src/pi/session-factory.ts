@@ -117,6 +117,7 @@ export async function createPiSession(
     sessionManager,
     model,
     thinkingLevel: config.llm.reasoning,
+    noTools: 'builtin',
   });
 
   return session;

@@ -14,6 +14,7 @@ This directory contains ADRs for tele-kb-bot, following the MADR format.
 | [0006](0006-memory-system-design.md) | Memory System Design | Accepted | 2026-05-21 |
 | [0007](0007-distribution-strategy-homebrew.md) | Distribution Strategy — Homebrew Tap | Accepted | 2026-05-21 |
 | [0008](0008-use-html-over-markdownv2.md) | Use HTML parse_mode over MarkdownV2 for Telegram Messages | Accepted | 2026-05-21 |
+| [0009](0009-tool-surface-restriction.md) | Agent Tool Surface Restriction | Accepted | 2026-05-23 |
 
 ## Decision Graph
 

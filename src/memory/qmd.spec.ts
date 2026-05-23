@@ -162,14 +162,22 @@ describe('run', () => {
     mockDetectSuccess('ok');
     run(['foo'], 15_000);
 
-    expect(mockExec).toHaveBeenCalledWith('qmd', ['foo'], { encoding: 'utf-8', stdio: 'pipe', timeout: 15_000 });
+    expect(mockExec).toHaveBeenCalledWith(
+      'qmd',
+      ['foo'],
+      expect.objectContaining({ encoding: 'utf-8', stdio: 'pipe', timeout: 15_000 }),
+    );
   });
 
   it('uses default 30_000 ms timeout when not specified', () => {
     mockDetectSuccess('ok');
     run(['bar']);
 
-    expect(mockExec).toHaveBeenCalledWith('qmd', ['bar'], { encoding: 'utf-8', stdio: 'pipe', timeout: 30_000 });
+    expect(mockExec).toHaveBeenCalledWith(
+      'qmd',
+      ['bar'],
+      expect.objectContaining({ encoding: 'utf-8', stdio: 'pipe', timeout: 30_000 }),
+    );
   });
 });
 
@@ -319,22 +327,22 @@ describe('search', () => {
     mockDetectSuccess(JSON.stringify([{ path: '/a.md', score: 1, snippet: 'x' }]));
     search('test query');
 
-    expect(mockExec).toHaveBeenCalledWith('qmd', ['search', 'test query', '--json', '--limit', '5'], {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 30_000,
-    });
+    expect(mockExec).toHaveBeenCalledWith(
+      'qmd',
+      ['search', 'test query', '--json', '--limit', '5'],
+      expect.objectContaining({ encoding: 'utf-8', stdio: 'pipe', timeout: 30_000 }),
+    );
   });
 
   it('calls run with custom maxResults', () => {
     mockDetectSuccess(JSON.stringify([{ path: '/a.md', score: 1, snippet: 'x' }]));
     search('test', 10);
 
-    expect(mockExec).toHaveBeenCalledWith('qmd', ['search', 'test', '--json', '--limit', '10'], {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 30_000,
-    });
+    expect(mockExec).toHaveBeenCalledWith(
+      'qmd',
+      ['search', 'test', '--json', '--limit', '10'],
+      expect.objectContaining({ encoding: 'utf-8', stdio: 'pipe', timeout: 30_000 }),
+    );
   });
 
   it('returns null when detect fails', () => {
@@ -361,11 +369,11 @@ describe('vsearch', () => {
     mockDetectSuccess();
     vsearch('vector query', 3);
 
-    expect(mockExec).toHaveBeenCalledWith('qmd', ['vsearch', 'vector query', '--json', '--limit', '3'], {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 60_000,
-    });
+    expect(mockExec).toHaveBeenCalledWith(
+      'qmd',
+      ['vsearch', 'vector query', '--json', '--limit', '3'],
+      expect.objectContaining({ encoding: 'utf-8', stdio: 'pipe', timeout: 60_000 }),
+    );
   });
 
   it('returns null when not detected', () => {
@@ -384,11 +392,11 @@ describe('vsearch', () => {
     mockDetectSuccess();
     vsearch('q');
 
-    expect(mockExec).toHaveBeenCalledWith('qmd', ['vsearch', 'q', '--json', '--limit', '5'], {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 60_000,
-    });
+    expect(mockExec).toHaveBeenCalledWith(
+      'qmd',
+      ['vsearch', 'q', '--json', '--limit', '5'],
+      expect.objectContaining({ encoding: 'utf-8', stdio: 'pipe', timeout: 60_000 }),
+    );
   });
 });
 
@@ -403,11 +411,11 @@ describe('query', () => {
     mockDetectSuccess();
     query('hybrid query', 7);
 
-    expect(mockExec).toHaveBeenCalledWith('qmd', ['query', 'hybrid query', '--json', '--limit', '7'], {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 60_000,
-    });
+    expect(mockExec).toHaveBeenCalledWith(
+      'qmd',
+      ['query', 'hybrid query', '--json', '--limit', '7'],
+      expect.objectContaining({ encoding: 'utf-8', stdio: 'pipe', timeout: 60_000 }),
+    );
   });
 
   it('returns null when not detected', () => {
@@ -426,10 +434,10 @@ describe('query', () => {
     mockDetectSuccess();
     query('q');
 
-    expect(mockExec).toHaveBeenCalledWith('qmd', ['query', 'q', '--json', '--limit', '5'], {
-      encoding: 'utf-8',
-      stdio: 'pipe',
-      timeout: 60_000,
-    });
+    expect(mockExec).toHaveBeenCalledWith(
+      'qmd',
+      ['query', 'q', '--json', '--limit', '5'],
+      expect.objectContaining({ encoding: 'utf-8', stdio: 'pipe', timeout: 60_000 }),
+    );
   });
 });

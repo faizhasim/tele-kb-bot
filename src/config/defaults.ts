@@ -42,6 +42,7 @@ const getDefaultConfig = (): Config => ({
     max_attachments_per_turn: 10,
     streaming_preview: true,
     text_chunk_size: 4096,
+    max_sessions: 5,
   },
   vault_directories: [],
   system_prompt: undefined,

@@ -23,8 +23,7 @@ vi.mock('../memory/manager', () => ({
 }));
 
 import * as manager from '../memory/manager';
-// Must import AFTER vi.mock — vitest hoists the mock declarations
-import { createExtensionFactories } from './extensions';
+import { createExtensionFactories, formatObsidianUri, resolveQmdToRealPath } from './extensions';
 
 // ─── Test Helpers ───────────────────────────────────────────────────
 
@@ -51,6 +50,7 @@ function createMockMemoryContext(overrides: Partial<MemoryContext> = {}): Memory
     configDir: '/tmp/test-config',
     maxEntries: 100,
     maxSizeBytes: 4096,
+    vaultDirectories: [],
     ...overrides,
   };
 }
@@ -64,8 +64,123 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-// ─── Base Tests ─────────────────────────────────────────────────────
+// ─── Obsidian URI Helper Tests ─────────────────────────────────────
 
+describe('resolveQmdToRealPath', () => {
+  it('resolves exact path segments unchanged', async () => {
+    const result = resolveQmdToRealPath('/tmp', 'existing/file.md');
+    expect(result).toBe('/tmp/existing/file.md');
+  });
+
+  it('resolves hyphen-to-dot segments via filesystem lookup', async () => {
+    const { mkdtempSync, writeFileSync, mkdirSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const tempDir = mkdtempSync(join(tmpdir(), 'qmd-resolve-'));
+    try {
+      // Create directory with dot name (as on real filesystem)
+      mkdirSync(join(tempDir, '20.20-sejati'), { recursive: true });
+      writeFileSync(join(tempDir, '20.20-sejati', 'note.md'), '');
+
+      // qmd returns hyphens instead of dots — resolveQmdToRealPath should find the real path
+      const result = resolveQmdToRealPath(tempDir, '20-20-sejati/note.md');
+      expect(result).toBe(join(tempDir, '20.20-sejati', 'note.md'));
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('falls back to qmd path when directory not found', async () => {
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const tempDir = mkdtempSync(join(tmpdir(), 'qmd-fallback-'));
+    try {
+      const result = resolveQmdToRealPath(tempDir, 'nonexistent/file.md');
+      expect(result).toBe(join(tempDir, 'nonexistent/file.md'));
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('handles nested dot-dir segments', async () => {
+    const { mkdtempSync, writeFileSync, mkdirSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const tempDir = mkdtempSync(join(tmpdir(), 'qmd-nested-'));
+    try {
+      mkdirSync(join(tempDir, '20.20-sejati', 'sub.dir'), { recursive: true });
+      writeFileSync(join(tempDir, '20.20-sejati', 'sub.dir', 'doc.md'), '');
+
+      // Both segments have dots that qmd would normalize
+      const result = resolveQmdToRealPath(tempDir, '20-20-sejati/sub-dir/doc.md');
+      expect(result).toBe(join(tempDir, '20.20-sejati', 'sub.dir', 'doc.md'));
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('formatObsidianUri', () => {
+  it('builds URI from absolute path under vault', async () => {
+    const vaults = ['/Users/me/Obsidian/Main'];
+    const result = formatObsidianUri('/Users/me/Obsidian/Main/Projects/Idea.md', vaults);
+    expect(result).toBe('obsidian://open?vault=Main&file=Projects/Idea.md');
+  });
+
+  it('returns null for path not under any vault', async () => {
+    const vaults = ['/Users/me/Obsidian/Main'];
+    const result = formatObsidianUri('/tmp/some-file.md', vaults);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when vault directories are empty', async () => {
+    const result = formatObsidianUri('/Users/me/Obsidian/Main/file.md', []);
+    expect(result).toBeNull();
+  });
+
+  it('matches second vault when file is under it', async () => {
+    const vaults = ['/vault/a', '/vault/b'];
+    const result = formatObsidianUri('/vault/b/doc.md', vaults);
+    expect(result).toBe('obsidian://open?vault=b&file=doc.md');
+  });
+
+  it('URL-encodes special characters in file path', async () => {
+    const vaults = ['/vault'];
+    const result = formatObsidianUri('/vault/my notes/report#1.md', vaults);
+    expect(result).toBe('obsidian://open?vault=vault&file=my%20notes/report%231.md');
+  });
+
+  it('handles qmd URI paths', async () => {
+    // qmd URIs that match a vault by collection name → resolved to real path
+    const { mkdtempSync, mkdirSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const tempDir = mkdtempSync(join(tmpdir(), 'qmd-uri-'));
+    try {
+      mkdirSync(join(tempDir, 'docs'), { recursive: true });
+      const vaults = [tempDir];
+      const vaultName = tempDir.split('/').pop() ?? 'vault';
+
+      // qmd URI with collection matching vault directory name
+      const qmdUri = `qmd://${vaultName}/docs/note.md`;
+      const result = formatObsidianUri(qmdUri, vaults);
+      expect(result).toBe(`obsidian://open?vault=${encodeURIComponent(vaultName)}&file=docs/note.md`);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns null for qmd URI with no matching collection', async () => {
+    const vaults = ['/vault/a'];
+    const result = formatObsidianUri('qmd://unknown-collection/file.md', vaults);
+    expect(result).toBeNull();
+  });
+});
 describe('createExtensionFactories', () => {
   it('returns an array of 5 factory functions', () => {
     const factories = createExtensionFactories();

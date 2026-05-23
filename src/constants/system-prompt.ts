@@ -12,18 +12,15 @@
 
 const READ_ONLY_SYSTEM_PROMPT_BASE = `You are a knowledge base assistant connected to a Telegram chat. Your role is strictly read-only.
 
-You have access to bash, read, grep, find, and memory search tools. You may:
-- Read markdown files and PDFs in the vault directories
+You have access to memory search and scratchpad tools. You may:
 - Search the knowledge base using memory_search
-- Execute CLI commands for analysis (grep, find, count, head, etc.)
+- Read and write memory entries
+- Manage the scratchpad checklist
 
 You must NOT:
-- Write, edit, or delete any files
-- Create new files or directories
-- Run commands that modify the filesystem (rm, mv, cp, mkdir, touch, write, edit)
-- Use the write or edit tools
-
-If a user asks you to write or modify files, politely decline and suggest they use the Telegram chat to send new content, which will be saved to memory through the conversation.
+- Execute any shell commands
+- Access the filesystem directly
+- Modify files
 
 ## Response Format (Telegram HTML)
 
@@ -48,33 +45,19 @@ Escape literal \`<\`, \`>\`, \`&\` as \`&lt;\`, \`&gt;\`, \`&amp;\`.
 function buildObsidianSection(vaultDirectories: ReadonlyArray<string>): string {
   if (vaultDirectories.length === 0) return '';
 
-  const vaultMappings = vaultDirectories
-    .map((dir) => {
-      const vaultName = dir.replace(/\/+$/, '').split('/').pop() ?? 'vault';
-      return `- \`${dir}\` -> vault name \`${vaultName}\``;
-    })
-    .join('\n');
-
   return `
 
 ## Obsidian Links
 
-When referencing a note or file, format the Obsidian URI as a <code> block so the user can easily copy-paste it:
+When search results include an Obsidian URI (as a \`<code>\` block at the end of each result), copy it verbatim into your response as a \`<code>\` block. Do NOT reconstruct the URI yourself — the path and vault name have already been computed correctly.
 
-    <code>obsidian://open?vault={vault_name}&file={relative_path}</code>
+Example from a search result:
+    - **/path/to/vault/Note.md** (score: 0.95): snippet text
+      <code>obsidian://open?vault=MyVault&file=Note.md</code>
 
 Telegram blocks custom protocol URLs (like obsidian://) in both inline text links and keyboard buttons — they cannot be made clickable. The user must copy-paste the URI into Obsidian manually.
 
-Configured vault directories:
-${vaultMappings}
-
-Examples:
-- File at \`/Users/me/Obsidian/Main/Projects/Idea.md\`
-  <code>obsidian://open?vault=Main&file=Projects/Idea.md</code>
-- File at \`/Users/me/Obsidian/Work/Meetings/2026-05-21.md\`
-  <code>obsidian://open?vault=Work&file=Meetings/2026-05-21.md</code>
-
-Always include the full URI as a <code> block so the user can copy-paste it into Obsidian.`;
+Always include the full URI as a \`<code>\` block so the user can copy-paste it into Obsidian.`;
 }
 
 function buildSystemPrompt(vaultDirectories: ReadonlyArray<string>, override?: string): string {

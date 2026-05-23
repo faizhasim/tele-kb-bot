@@ -76,6 +76,7 @@ function buildTestConfig(): Config {
       max_attachments_per_turn: 10,
       streaming_preview: false,
       text_chunk_size: 4096,
+      max_sessions: 5,
     },
     vault_directories: [],
     system_prompt: undefined,
@@ -133,6 +134,65 @@ describe('createSessionRegistry', () => {
     expect(session1).not.toBe(session3);
     expect(registry.activeCount()).toBe(3);
     expect(mockCreatePiSession).toHaveBeenCalledTimes(3);
+  });
+  // ──────────────────────────────────────────────────────────────────
+  // Pool limit
+  // ──────────────────────────────────────────────────────────────────
+
+  it('evicts LRU session when pool limit is exceeded', async () => {
+    const limitedConfig = buildTestConfig();
+    limitedConfig.bot.max_sessions = 2;
+    const registry = createSessionRegistry(limitedConfig, TEST_CONFIG_DIR);
+
+    // Fill the pool (fake timers mean Date.now() is constant — advance to distinguish LRU)
+    vi.advanceTimersByTime(1000);
+    const session1 = await registry.getOrCreate(1);
+    vi.advanceTimersByTime(1000);
+    const _session2 = await registry.getOrCreate(2);
+    expect(registry.activeCount()).toBe(2);
+
+    // Touch session1 (later time = not LRU)
+    vi.advanceTimersByTime(1000);
+    await registry.getOrCreate(1);
+
+    // Creating session3 should evict session2 (the LRU)
+    vi.advanceTimersByTime(1000);
+    const session3 = await registry.getOrCreate(3);
+
+    expect(registry.activeCount()).toBe(2);
+    expect(registry.get(1)).toBe(session1); // touched, kept
+    expect(registry.get(2)).toBeUndefined(); // LRU, evicted
+    expect(registry.get(3)).toBe(session3); // newest, kept
+    expect(mockCreatePiSession).toHaveBeenCalledTimes(3);
+  });
+
+  it('respects pool limit with no eviction when under limit', async () => {
+    const limitedConfig = buildTestConfig();
+    limitedConfig.bot.max_sessions = 5;
+    const registry = createSessionRegistry(limitedConfig, TEST_CONFIG_DIR);
+
+    const sessions = await Promise.all([1, 2, 3, 4].map((id) => registry.getOrCreate(id)));
+
+    expect(registry.activeCount()).toBe(4);
+    expect(mockCreatePiSession).toHaveBeenCalledTimes(4);
+    for (const s of sessions) {
+      expect(s).toBeDefined();
+    }
+  });
+
+  it('uses default max_sessions when config value is missing', async () => {
+    const limitedConfig = buildTestConfig();
+    delete (limitedConfig.bot as Record<string, unknown>).max_sessions;
+    const registry = createSessionRegistry(limitedConfig, TEST_CONFIG_DIR);
+
+    await Promise.all([1, 2, 3, 4, 5].map((id) => registry.getOrCreate(id)));
+    expect(registry.activeCount()).toBe(5);
+
+    // 6th session triggers eviction of the LRU (chat 1)
+    await registry.getOrCreate(6);
+    expect(registry.activeCount()).toBe(5);
+    expect(registry.get(1)).toBeUndefined();
+    expect(registry.get(6)).toBeDefined();
   });
 
   // ──────────────────────────────────────────────────────────────────

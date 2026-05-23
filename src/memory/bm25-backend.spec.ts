@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { BM25MemoryBackend } from './bm25-backend';
+import { createBM25MemoryBackend } from './bm25-backend';
 
 describe('BM25MemoryBackend', () => {
   let tempDir: string;
@@ -15,7 +15,7 @@ describe('BM25MemoryBackend', () => {
   });
 
   it('isAvailable returns false before rebuildIndex', () => {
-    const backend = new BM25MemoryBackend('/tmp/nonexistent');
+    const backend = createBM25MemoryBackend('/tmp/nonexistent');
     expect(backend.isAvailable()).toBe(false);
   });
 
@@ -24,7 +24,7 @@ describe('BM25MemoryBackend', () => {
       tempDir = mkdtempSync(join(tmpdir(), 'bm25-test-'));
       writeFileSync(join(tempDir, 'MEMORY.md'), 'Root memory content.');
 
-      const backend = new BM25MemoryBackend(tempDir);
+      const backend = createBM25MemoryBackend(tempDir);
       await backend.rebuildIndex();
 
       expect(backend.isAvailable()).toBe(true);
@@ -33,7 +33,7 @@ describe('BM25MemoryBackend', () => {
     it('leaves backend unavailable when directory is empty', async () => {
       tempDir = mkdtempSync(join(tmpdir(), 'bm25-test-'));
 
-      const backend = new BM25MemoryBackend(tempDir);
+      const backend = createBM25MemoryBackend(tempDir);
       await backend.rebuildIndex();
 
       expect(backend.isAvailable()).toBe(false);
@@ -43,7 +43,7 @@ describe('BM25MemoryBackend', () => {
       tempDir = mkdtempSync(join(tmpdir(), 'bm25-test-'));
       writeFileSync(join(tempDir, 'MEMORY.md'), 'Content.');
 
-      const backend = new BM25MemoryBackend(tempDir);
+      const backend = createBM25MemoryBackend(tempDir);
 
       await expect(backend.rebuildIndex()).resolves.toBeUndefined();
       expect(backend.isAvailable()).toBe(true);
@@ -58,7 +58,7 @@ describe('BM25MemoryBackend', () => {
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       writeFileSync(join(tempDir, 'daily', `${dateStr}.md`), 'Daily log entry about implementation.');
 
-      const backend = new BM25MemoryBackend(tempDir);
+      const backend = createBM25MemoryBackend(tempDir);
       await backend.rebuildIndex();
 
       expect(backend.isAvailable()).toBe(true);
@@ -77,7 +77,7 @@ describe('BM25MemoryBackend', () => {
       const oldDateStr = `${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, '0')}-${String(oldDate.getDate()).padStart(2, '0')}`;
       writeFileSync(join(tempDir, 'daily', `${oldDateStr}.md`), 'Stale entry about old feature.');
 
-      const backend = new BM25MemoryBackend(tempDir);
+      const backend = createBM25MemoryBackend(tempDir);
       await backend.rebuildIndex();
 
       const results = await backend.search('stale');
@@ -87,7 +87,7 @@ describe('BM25MemoryBackend', () => {
 
   describe('search', () => {
     it('returns empty array before rebuildIndex', async () => {
-      const backend = new BM25MemoryBackend('/tmp/nonexistent');
+      const backend = createBM25MemoryBackend('/tmp/nonexistent');
       const results = await backend.search('anything');
       expect(results).toEqual([]);
     });
@@ -96,7 +96,7 @@ describe('BM25MemoryBackend', () => {
       tempDir = mkdtempSync(join(tmpdir(), 'bm25-test-'));
       writeFileSync(join(tempDir, 'MEMORY.md'), 'The memory system stores project information.');
 
-      const backend = new BM25MemoryBackend(tempDir);
+      const backend = createBM25MemoryBackend(tempDir);
       await backend.rebuildIndex();
 
       const results = await backend.search('memory system');
@@ -108,7 +108,7 @@ describe('BM25MemoryBackend', () => {
       tempDir = mkdtempSync(join(tmpdir(), 'bm25-test-'));
       writeFileSync(join(tempDir, 'MEMORY.md'), 'Only information about the project.');
 
-      const backend = new BM25MemoryBackend(tempDir);
+      const backend = createBM25MemoryBackend(tempDir);
       await backend.rebuildIndex();
 
       const results = await backend.search('nonexistentwordxyz');
@@ -124,7 +124,7 @@ describe('BM25MemoryBackend', () => {
       const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       writeFileSync(join(tempDir, 'daily', `${dateStr}.md`), 'Daily project update.');
 
-      const backend = new BM25MemoryBackend(tempDir);
+      const backend = createBM25MemoryBackend(tempDir);
       await backend.rebuildIndex();
 
       const results = await backend.search('project', 1);

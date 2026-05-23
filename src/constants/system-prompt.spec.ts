@@ -43,17 +43,18 @@ describe('buildSystemPrompt', () => {
     expect(result).toContain(READ_ONLY_SYSTEM_PROMPT_BASE);
   });
 
-  it('includes vault mappings in Obsidian section', () => {
+  it('includes Obsidian Links section when vaults are configured', () => {
     const result = buildSystemPrompt(['/Users/me/Obsidian/Main', '/Users/me/Obsidian/Work']);
-    expect(result).toContain('Main');
-    expect(result).toContain('Work');
-    expect(result).toContain('/Users/me/Obsidian/Main');
-    expect(result).toContain('/Users/me/Obsidian/Work');
+    expect(result).toContain('Obsidian Links');
+    expect(result).toContain('Do NOT reconstruct the URI yourself');
+    expect(result).toContain('copy-paste');
   });
 
-  it('handles vault path with trailing slash', () => {
+  it('includes Obsidian Links section for single vault', () => {
     const result = buildSystemPrompt(['/Users/me/Obsidian/Main/']);
-    expect(result).toContain('obsidian://open?vault=Main');
+    expect(result).toContain('Obsidian Links');
+    expect(result).toContain('copy it verbatim');
+    expect(result).toContain('obsidian://open?vault=');
   });
 
   it('returns override when override string is provided and non-empty', () => {

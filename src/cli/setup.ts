@@ -139,7 +139,7 @@ export function buildConfig(state: SetupState): Record<string, unknown> {
         binary_path: 'qmd',
       },
     },
-    bot: { max_attachments_per_turn: 10, streaming_preview: true, text_chunk_size: 4096 },
+    bot: { max_attachments_per_turn: 10, streaming_preview: true, text_chunk_size: 4096, max_sessions: 5 },
     vault_directories: state.vaultDirectories,
   };
 }

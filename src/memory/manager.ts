@@ -13,7 +13,7 @@ import { join } from 'node:path';
 import { FileSystem } from '@effect/platform/FileSystem';
 import { Effect } from 'effect';
 import type { Config } from '../config/schema';
-import { BM25MemoryBackend } from './bm25-backend';
+import { createBM25MemoryBackend } from './bm25-backend';
 import type { MemoryContext } from './interface';
 import { LRUCache } from './lru-cache';
 import type { IndexState } from './search';
@@ -173,7 +173,7 @@ const searchMemory = (state: IndexState, query: string, maxResults = 5): Readonl
  *
  * Returns a MemoryContext with the backend and cache layer.
  */
-async function createMemoryContext(config: Config, configDir: string): Promise<MemoryContext> {
+const createMemoryContext = async (config: Config, configDir: string): Promise<MemoryContext> => {
   const memoryDir = join(configDir, 'memory');
 
   // LRU cache wraps the backend
@@ -186,14 +186,16 @@ async function createMemoryContext(config: Config, configDir: string): Promise<M
 
   if (config.memory.mode === 'persistent') {
     // qmd backend — use BM25 as fallback if qmd not available
-    const { QmdMemoryBackend } = await import('./qmd-backend').catch(() => ({ QmdMemoryBackend: BM25MemoryBackend }));
-    if (QmdMemoryBackend === BM25MemoryBackend) {
-      backend = new BM25MemoryBackend(memoryDir);
+    const { createQmdMemoryBackend: loadQmd } = await import('./qmd-backend').catch(() => ({
+      createQmdMemoryBackend: undefined as undefined,
+    }));
+    if (loadQmd) {
+      backend = loadQmd(config.vault_directories);
     } else {
-      backend = new QmdMemoryBackend(configDir, memoryDir);
+      backend = createBM25MemoryBackend(memoryDir, config.vault_directories);
     }
   } else {
-    backend = new BM25MemoryBackend(memoryDir);
+    backend = createBM25MemoryBackend(memoryDir, config.vault_directories);
   }
 
   // Rebuild index at startup
@@ -219,8 +221,9 @@ async function createMemoryContext(config: Config, configDir: string): Promise<M
     configDir,
     maxEntries: config.memory.cache.max_entries,
     maxSizeBytes: config.memory.cache.max_size_bytes,
+    vaultDirectories: config.vault_directories,
   };
-}
+};
 
 export type { SearchResult };
 export {

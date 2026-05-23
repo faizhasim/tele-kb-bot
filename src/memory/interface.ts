@@ -30,6 +30,8 @@ interface MemoryContext {
   readonly configDir: string;
   readonly maxEntries: number;
   readonly maxSizeBytes: number;
+  /** Vault directory paths used to compute Obsidian URIs from search results. */
+  readonly vaultDirectories: ReadonlyArray<string>;
 }
 
 export type { MemoryBackend, MemoryContext };

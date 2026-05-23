@@ -8,34 +8,42 @@
  */
 
 import type { MemoryBackend } from './interface';
-import { detect, query as qmdQuery } from './qmd';
+import { detect, query as qmdQuery, run } from './qmd';
 import type { SearchResult } from './types';
 
-class QmdMemoryBackend implements MemoryBackend {
-  private _available = false;
+// ─── Factory ─────────────────────────────────────────────────────────
 
-  isAvailable(): boolean {
-    return this._available;
-  }
+const createQmdMemoryBackend = (vaultDirectories: ReadonlyArray<string> = []): MemoryBackend => {
+  let available = false;
 
-  async rebuildIndex(): Promise<void> {
-    // qmd auto-indexes based on working directory.
-    // We just check if the binary is available.
-    this._available = detect();
-  }
+  const backend: MemoryBackend = {
+    isAvailable: () => available,
 
-  async search(query: string, maxResults = 5): Promise<ReadonlyArray<SearchResult>> {
-    if (!this._available) return [];
+    rebuildIndex: async () => {
+      available = detect();
+      if (!available) return;
 
-    const results = qmdQuery(query, maxResults);
-    if (results === null) return [];
+      // Index each vault directory via qmd
+      for (const vaultDir of vaultDirectories) {
+        run(['index', vaultDir], 60_000);
+      }
+    },
 
-    return results.map((r) => ({
-      filePath: r.filePath,
-      score: r.score,
-      snippet: r.snippet,
-    }));
-  }
-}
+    search: async (query: string, maxResults = 5): Promise<ReadonlyArray<SearchResult>> => {
+      if (!available) return [];
 
-export { QmdMemoryBackend };
+      const results = qmdQuery(query, maxResults);
+      if (results === null) return [];
+
+      return results.map((r) => ({
+        filePath: r.filePath,
+        score: r.score,
+        snippet: r.snippet,
+      }));
+    },
+  };
+
+  return backend;
+};
+
+export { createQmdMemoryBackend };

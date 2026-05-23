@@ -62,6 +62,8 @@ const BotConfig = S.Struct({
   max_attachments_per_turn: S.Number,
   streaming_preview: S.Boolean,
   text_chunk_size: S.Number,
+  /** Max concurrent LLM sessions. Oldest idle evicted when exceeded. */
+  max_sessions: S.Number,
 });
 
 // ─── Root Config ─────────────────────────────────────────────────────

@@ -2,7 +2,12 @@
  * Session registry for tele-kb-bot.
  *
  * Factory function that creates a per-chat session manager.
- * Each chat gets its own isolated pi AgentSession with lazy creation and idle eviction.
+ * Each chat gets its own isolated pi AgentSession with lazy creation,
+ * idle eviction (30 min default), and a hard pool cap.
+ *
+ * Pool limit (config.bot.max_sessions, default 5):
+ * When getOrCreate is called at capacity, the least-recently-used session
+ * is evicted (disposed) before the new one is created.
  *
  * @module
  */
@@ -91,6 +96,24 @@ const createSessionRegistry = (
       existing.lastUsed = Date.now();
       return existing.session;
     }
+
+    // Pool limit: evict the LRU session when at capacity
+    const maxSessions = config.bot.max_sessions ?? 5;
+    if (sessions.size >= maxSessions) {
+      let lruChatId: number | null = null;
+      let lruTime = Infinity;
+      for (const [id, entry] of sessions) {
+        if (entry.lastUsed < lruTime) {
+          lruTime = entry.lastUsed;
+          lruChatId = id;
+        }
+      }
+      if (lruChatId !== null) {
+        log.info({ chatId: lruChatId, reason: 'pool_limit' }, 'Evicting LRU session to stay within pool limit');
+        sessions.delete(lruChatId);
+      }
+    }
+
     log.info({ chatId }, 'Creating new pi session for chat');
     const session = await createPiSession(config, configDir);
     sessions.set(chatId, {

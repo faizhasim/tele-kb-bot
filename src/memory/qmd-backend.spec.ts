@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { QmdMemoryBackend } from './qmd-backend';
+import { createQmdMemoryBackend } from './qmd-backend';
 
 // Create mock functions before vi.mock runs (hoisted via vi.hoisted)
 const { mockDetect, mockQuery } = vi.hoisted(() => ({
@@ -13,11 +13,11 @@ vi.mock('./qmd', () => ({
 }));
 
 describe('QmdMemoryBackend', () => {
-  let backend: QmdMemoryBackend;
+  let backend: ReturnType<typeof createQmdMemoryBackend>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    backend = new QmdMemoryBackend();
+    backend = createQmdMemoryBackend();
   });
 
   it('isAvailable returns false initially', () => {
