@@ -17,7 +17,9 @@
     "format": "biome format --write src/",
     "format:check": "biome format src/",
     "test:coverage": "vitest run --coverage",
-    "test:coverage:watch": "vitest --coverage"
+    "test:coverage:watch": "vitest --coverage",
+    "docs:build": "mkdocs build --strict",
+    "docs:serve": "mkdocs serve"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",

@@ -61,10 +61,28 @@ src/
 ├── pi/               # pi SDK integration (session factory, extensions, provider)
 ├── telegram/         # Telegram client, handlers, media, streaming, chunking
 └── memory/           # Knowledge base (BM25 search, scratchpad, context injection)
-adrs/                 # Architectural Decision Records
+docs/                 # Documentation site (MkDocs + Nord theme)
+├── getting-started/  # Tutorials
+├── how-to/           # How-to guides
+├── reference/        # CLI, config, architecture, security
+└── explanation/      # ADRs, design rationale, Homebrew strategy
+adrs/                 # Source ADRs (also promoted to docs)
 Formula/              # Homebrew formula
 scripts/              # Release pipeline
 ```
+
+## Documentation
+
+Full documentation site at **https://faizhasim.github.io/tele-kb-bot** (MkDocs + Nord theme).
+
+To build and view locally:
+```bash
+pip install -r requirements.txt
+mkdocs serve
+```
+
+Includes Mermaid diagrams, admonitions, tabs, code copy, and all 9 ADRs promoted into the Explanation section.
+
 
 ## Key Decisions
 

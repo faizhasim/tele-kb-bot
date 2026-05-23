@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://img.shields.io/badge/tele‑kb‑bot-8B5CF6?style=for-the-badge&logo=telegram&logoColor=white&labelColor=1F2937">
-    <img alt="tele-kb-bot" src="https://img.shields.io/badge/tele‑kb‑bot-8B5CF6?style=for-the-badge&logo=telegram&logoColor=white&labelColor=white" width="400">
-  </picture>
+  <img src="docs/assets/images/tele-kb-bot-logo.svg" alt="tele-kb-bot" width="180">
 </p>
 
 <p align="center">
@@ -23,6 +20,7 @@
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/runtime-bun-000?style=flat&logo=bun" alt="Bun"></a>
   <a href="https://effect.website"><img src="https://img.shields.io/badge/built%20with-effect-FF6B6B?style=flat&logo=typescript" alt="Effect"></a>
   <a href="https://brew.sh"><img src="https://img.shields.io/badge/pkg-homebrew-FBB040?style=flat&logo=homebrew" alt="Homebrew"></a>
+  <a href="https://faizhasim.github.io/tele-kb-bot"><img src="https://img.shields.io/badge/docs-mkdocs-88C0D0?style=flat&logo=materialformkdocs&logoColor=white&labelColor=2E3440" alt="Docs"></a>
 </p>
 
 ---
@@ -40,7 +38,7 @@ Three commands. That's it.
 The `setup` wizard walks you through connecting your Telegram bot and configuring your LLM. After that, your bot is ready — just `tele-kb-bot start` to run it.
 
 > [!TIP]
-> Want to skip the wizard? Set `TELEGRAM_BOT_TOKEN` and run `tele-kb-bot setup --non-interactive`. See [Configuration](docs/configuration.md).
+> Want to skip the wizard? Set `TELEGRAM_BOT_TOKEN` and run `tele-kb-bot setup --non-interactive`. See the full [Configuration reference](https://faizhasim.github.io/tele-kb-bot/reference/configuration/).
 
 ---
 
@@ -84,7 +82,8 @@ Config lives in `~/.config/tele-kb-bot/config.yaml` (override with `TELE_KB_BOT_
 | `LOG_LEVEL` | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` |
 
 > [!NOTE]
-> The compiled binary contains **zero secrets**. All credentials are read from disk at runtime. See the [security model](docs/configuration.md#security).
+> The compiled binary contains **zero secrets**. All credentials are read from disk at runtime. See the [Security model](https://faizhasim.github.io/tele-kb-bot/reference/security/).
+
 
 ---
 
@@ -144,13 +143,19 @@ src/
 
 ## 📚 Docs
 
-| Guide | What it covers |
-|-------|----------------|
-| [Setup Guide](docs/setup.md) | Creating a bot, running setup, troubleshooting |
-| [Configuration](docs/configuration.md) | Full config schema, env vars, security model |
-| [Deployment](docs/deployment.md) | Launching on a machine with launchd |
-| [Nix Guide](docs/nix-guide.md) | Declarative config with home-manager and sops-nix |
-| [Development](docs/development.md) | Building from source, testing, releasing |
+Full documentation is available at **[faizhasim.github.io/tele-kb-bot](https://faizhasim.github.io/tele-kb-bot)** — built with MkDocs and the Nord theme.
+
+Includes:
+| Section | What you'll find |
+|---------|-----------------|
+| **Getting Started** | Quick start, setup guide, first chat |
+| **How-to Guides** | Deployment, development, Nix/home-manager |
+| **Reference** | CLI, configuration, architecture, security |
+| **Explanation** | Design decisions (ADRs), Homebrew strategy |
+| **ADRs** | All 9 architecture decision records promoted into the docs |
+
+To view locally: `pip install -r requirements.txt && mkdocs serve`
+
 
 ---
 
@@ -162,7 +167,7 @@ One click in GitHub Actions:
 2. Enter the version number (e.g., `0.1.1`)
 3. Pipeline builds for macOS, Linux, Windows — creates a GitHub Release and updates the Homebrew formula.
 
-For full details, see the [Development Guide](docs/development.md#release-process).
+For full details, see the [Development Guide](https://faizhasim.github.io/tele-kb-bot/how-to/development/).
 
 ---
 

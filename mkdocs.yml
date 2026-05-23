@@ -1,0 +1,162 @@
+# tele-kb-bot documentation
+# https://faizhasim.github.io/tele-kb-bot
+
+site_name: tele-kb-bot
+site_description: Chat with an LLM from your phone. Search a local knowledge base. All in a single binary.
+site_url: https://faizhasim.github.io/tele-kb-bot
+repo_url: https://github.com/faizhasim/tele-kb-bot
+repo_name: faizhasim/tele-kb-bot
+copyright: Copyright &copy; 2026 Mohd Faiz Hasim
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    # Light mode — Nord polar day
+    - media: "(prefers-color-scheme: light)"
+      scheme: nord
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+
+    # Dark mode — Nord polar night
+    - media: "(prefers-color-scheme: dark)"
+      scheme: nord-dark
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - announce.dismiss
+
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/robot-happy
+  favicon: assets/images/tele-kb-bot-logo.svg
+
+extra_css:
+  - stylesheets/nord.css
+
+markdown_extensions:
+  # Admonitions / callouts
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+  # Tabs
+  - pymdownx.tabbed:
+      alternate_style: true
+
+  # Code highlighting
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+  # Text formatting
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+
+  # Emoji
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+  # Table of contents
+  - toc:
+      permalink: true
+      permalink_title: Anchor link to this section
+
+  # Attributes (for images, badges, etc.)
+  - attr_list
+  - md_in_html
+
+  # Definition lists
+  - def_list
+
+plugins:
+  - search:
+      separator: '[\s\-_]+'
+  - git-revision-date-localized:
+      fallback_to_build_date: true
+  - mermaid2
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/faizhasim/tele-kb-bot
+    - icon: fontawesome/brands/telegram
+      link: https://t.me/faizhasim
+    - icon: fontawesome/solid/mug-saucer
+      link: https://www.buymeacoffee.com/faizhasim
+
+  generator: false
+
+  consent:
+    title: Cookie consent
+    description: >-
+      This site uses cookies for analytics. Your privacy matters —
+      you can accept or decline.
+
+  version:
+    provider: mike
+
+nav:
+  - Home: index.md
+
+  - Getting Started:
+    - getting-started/index.md
+    - Quick Start: getting-started/quick-start.md
+    - Setup Guide: getting-started/setup.md
+
+  - How-to Guides:
+    - how-to/index.md
+    - Deployment: how-to/deployment.md
+    - Development: how-to/development.md
+    - Nix Guide: how-to/nix-guide.md
+
+  - Reference:
+    - reference/index.md
+    - CLI: reference/cli.md
+    - Configuration: reference/configuration.md
+    - Architecture: reference/architecture.md
+    - Security: reference/security.md
+
+  - Explanation:
+    - explanation/index.md
+    - Design Decisions:
+      - explanation/design-decisions/index.md
+      - ADR-0001: explanation/design-decisions/0001-use-architectural-decision-records.md
+      - ADR-0002: explanation/design-decisions/0002-config-directory-and-schema.md
+      - ADR-0003: explanation/design-decisions/0003-cli-command-structure.md
+      - ADR-0004: explanation/design-decisions/0004-pi-sdk-integration.md
+      - ADR-0005: explanation/design-decisions/0005-telegram-bot-design.md
+      - ADR-0006: explanation/design-decisions/0006-memory-system-design.md
+      - ADR-0007: explanation/design-decisions/0007-distribution-strategy-homebrew.md
+      - ADR-0008: explanation/design-decisions/0008-use-html-over-markdownv2.md
+      - ADR-0009: explanation/design-decisions/0009-tool-surface-restriction.md
+    - Homebrew Strategy: explanation/homebrew-strategy.md
