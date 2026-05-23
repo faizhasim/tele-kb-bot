@@ -1,4 +1,4 @@
-# Design Decisions (ADRs)
+# ADRs (Architecture Decision Records)
 
 This directory contains all Architecture Decision Records (ADRs) for tele-kb-bot, following the [MADR](https://adr.github.io/madr/) format.
 

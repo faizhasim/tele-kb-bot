@@ -66,7 +66,7 @@ docs/                 # Documentation site (MkDocs + Nord theme)
 ├── how-to/           # How-to guides
 ├── reference/        # CLI, config, architecture, security
 └── explanation/      # ADRs, design rationale, Homebrew strategy
-adrs/                 # Source ADRs (also promoted to docs)
+
 Formula/              # Homebrew formula
 scripts/              # Release pipeline
 ```
@@ -86,7 +86,7 @@ Includes Mermaid diagrams, admonitions, tabs, code copy, and all 9 ADRs promoted
 
 ## Key Decisions
 
-All architecturally significant decisions are documented as ADRs in `adrs/`:
+All architecturally significant decisions are documented as ADRs in `docs/explanation/adrs/`:
 
 - `0001`: Use Markdown ADRs (MADR)
 - `0002`: Config directory location and YAML schema

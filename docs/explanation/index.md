@@ -4,11 +4,11 @@ Deep dives into the why behind tele-kb-bot. This section explains the reasoning,
 
 <div class="grid cards" markdown>
 
--   __📐 Design Decisions (ADRs)__
+-   __📐 ADRs (ADRs)__
 
     All Architecture Decision Records — documented rationale for every significant choice, from config format to distribution strategy.
 
-    [:octicons-arrow-right-24: Design Decisions](design-decisions/index.md)
+    [:octicons-arrow-right-24: ADRs](adrs/index.md)
 
 -   __🍺 Homebrew Strategy__
 

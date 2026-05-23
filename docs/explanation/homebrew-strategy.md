@@ -71,7 +71,7 @@ GoReleaser handles the following in sequence:
 
 The pipeline runs on `macos-latest` in GitHub Actions. All targets are cross-compiled by Bun's `--target` flag — no separate build machines are needed.
 
-A detailed architectural description of the distribution strategy is available in [ADR-0007](design-decisions/0007-distribution-strategy-homebrew.md), including the decision drivers, trade-offs evaluated, and confirmed outcomes.
+A detailed architectural description of the distribution strategy is available in [ADR-0007](adrs/0007-distribution-strategy-homebrew.md), including the decision drivers, trade-offs evaluated, and confirmed outcomes.
 
 ## Platform Support
 

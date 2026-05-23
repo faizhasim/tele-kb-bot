@@ -59,7 +59,7 @@ When a user sends a message, the bot checks it against the allowed-user whitelis
 
 The architecture decisions behind each subsystem are documented in the Design Decisions section:
 
-- [ADR-0004: pi SDK Integration](../explanation/design-decisions/0004-pi-sdk-integration.md) — session factory, agent lifecycle
-- [ADR-0005: Telegram Bot Design](../explanation/design-decisions/0005-telegram-bot-design.md) — message handling, typing indicators, chunking
-- [ADR-0006: Memory System Design](../explanation/design-decisions/0006-memory-system-design.md) — BM25/qmd backends, context injection
-- [ADR-0009: Tool Surface Restriction](../explanation/design-decisions/0009-tool-surface-restriction.md) — read-only security model
+- [ADR-0004: pi SDK Integration](../explanation/adrs/0004-pi-sdk-integration.md) — session factory, agent lifecycle
+- [ADR-0005: Telegram Bot Design](../explanation/adrs/0005-telegram-bot-design.md) — message handling, typing indicators, chunking
+- [ADR-0006: Memory System Design](../explanation/adrs/0006-memory-system-design.md) — BM25/qmd backends, context injection
+- [ADR-0009: Tool Surface Restriction](../explanation/adrs/0009-tool-surface-restriction.md) — read-only security model

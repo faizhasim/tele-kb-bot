@@ -7,11 +7,11 @@
 </p>
 
 <p align="center">
+  <a href="https://faizhasim.github.io/tele-kb-bot"><b>📚 Documentation</b></a> ·
   <a href="#-quick-start"><b>Quick Start</b></a> ·
   <a href="#-commands"><b>Commands</b></a> ·
   <a href="#-configuration"><b>Configuration</b></a> ·
-  <a href="#-architecture"><b>Architecture</b></a> ·
-  <a href="#-docs"><b>Docs</b></a>
+  <a href="#-architecture"><b>Architecture</b></a>
 </p>
 
 <p align="center">
@@ -84,7 +84,6 @@ Config lives in `~/.config/tele-kb-bot/config.yaml` (override with `TELE_KB_BOT_
 > [!NOTE]
 > The compiled binary contains **zero secrets**. All credentials are read from disk at runtime. See the [Security model](https://faizhasim.github.io/tele-kb-bot/reference/security/).
 
-
 ---
 
 ## 🏗️ Architecture
@@ -146,7 +145,7 @@ src/
 Full documentation is available at **[faizhasim.github.io/tele-kb-bot](https://faizhasim.github.io/tele-kb-bot)** — built with MkDocs and the Nord theme.
 
 Includes:
-| Section | What you'll find |
+
 |---------|-----------------|
 | **Getting Started** | Quick start, setup guide, first chat |
 | **How-to Guides** | Deployment, development, Nix/home-manager |
@@ -155,7 +154,6 @@ Includes:
 | **ADRs** | All 9 architecture decision records promoted into the docs |
 
 To view locally: `pip install -r requirements.txt && mkdocs serve`
-
 
 ---
 

@@ -42,11 +42,11 @@ All log output passes through Pino's redaction engine. Any value at these paths 
 - `*.token`
 - `*.secret`
 
-> For implementation details, see [ADR-0002](../explanation/design-decisions/0002-config-directory-and-schema.md).
+> For implementation details, see [ADR-0002](../explanation/adrs/0002-config-directory-and-schema.md).
 
 ## Agent Tool Surface Restriction
 
-Following [ADR-0009](../explanation/design-decisions/0009-tool-surface-restriction.md), the pi SDK's default built-in tools are disabled. The agent has **no shell execution** and **no arbitrary filesystem access**.
+Following [ADR-0009](../explanation/adrs/0009-tool-surface-restriction.md), the pi SDK's default built-in tools are disabled. The agent has **no shell execution** and **no arbitrary filesystem access**.
 
 ### Removed Tools
 

@@ -148,15 +148,15 @@ nav:
 
   - Explanation:
     - explanation/index.md
-    - Design Decisions:
-      - explanation/design-decisions/index.md
-      - ADR-0001: explanation/design-decisions/0001-use-architectural-decision-records.md
-      - ADR-0002: explanation/design-decisions/0002-config-directory-and-schema.md
-      - ADR-0003: explanation/design-decisions/0003-cli-command-structure.md
-      - ADR-0004: explanation/design-decisions/0004-pi-sdk-integration.md
-      - ADR-0005: explanation/design-decisions/0005-telegram-bot-design.md
-      - ADR-0006: explanation/design-decisions/0006-memory-system-design.md
-      - ADR-0007: explanation/design-decisions/0007-distribution-strategy-homebrew.md
-      - ADR-0008: explanation/design-decisions/0008-use-html-over-markdownv2.md
-      - ADR-0009: explanation/design-decisions/0009-tool-surface-restriction.md
+    - ADRs:
+      - explanation/adrs/index.md
+      - ADR-0001: explanation/adrs/0001-use-architectural-decision-records.md
+      - ADR-0002: explanation/adrs/0002-config-directory-and-schema.md
+      - ADR-0003: explanation/adrs/0003-cli-command-structure.md
+      - ADR-0004: explanation/adrs/0004-pi-sdk-integration.md
+      - ADR-0005: explanation/adrs/0005-telegram-bot-design.md
+      - ADR-0006: explanation/adrs/0006-memory-system-design.md
+      - ADR-0007: explanation/adrs/0007-distribution-strategy-homebrew.md
+      - ADR-0008: explanation/adrs/0008-use-html-over-markdownv2.md
+      - ADR-0009: explanation/adrs/0009-tool-surface-restriction.md
     - Homebrew Strategy: explanation/homebrew-strategy.md

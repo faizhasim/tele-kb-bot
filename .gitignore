@@ -35,3 +35,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # avoid ai skills for now
 .agents/skills/
+
+# mkdocs build output
+site/
