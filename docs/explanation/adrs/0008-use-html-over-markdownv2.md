@@ -33,7 +33,7 @@ Chosen option: **HTML with tag-stripping fallback**, because HTML is more forgiv
 
 - Good, because Telegram's HTML parser is lenient — stray unclosed tags don't crash, they just don't render
 - Good, because the only characters that need escaping in HTML are `<`, `>`, and `&` — far fewer than MarkdownV2's `_ * [ ] ( ) ~ \` > # + - = | { } . !`
-- Good, because the fallback (`<[^>]*>` regex) strips only tags, preserving all text content — unlike the MarkdownV2 fallback which strips formatting chars mixed with content
+- Good, because the fallback regex (angle bracket tag pattern) strips only tags, preserving all text content — unlike the MarkdownV2 fallback which strips formatting chars mixed with content
 - Neutral, because Obsidian URIs cannot be made clickable — Telegram blocks custom protocol URLs (`obsidian://`) in both inline `<a>` tags and `InlineKeyboard.url()` buttons. The LLM is instructed to render them as `<code>` blocks for manual copy-paste
 - Good, because LLMs (especially GPT/DeepSeek families) are trained on massive HTML corpora and naturally generate valid HTML
 - Bad, because HTML is slightly more verbose than MarkdownV2 (`<b>bold</b>` vs `**bold**`)
@@ -49,7 +49,7 @@ The `sendChunked` function in `src/daemon/bot.ts` uses `parse_mode: 'HTML'` and 
 
 - Good, because Telegram's HTML parser is resilient — it handles malformed, nested, or truncated tags gracefully
 - Good, because only three characters need escaping (`<`, `>`, `&`), making it far less error-prone for LLM output
-- Good, because the fallback regex `<[^>]*>` cleanly removes HTML tags without affecting the text content
+- Good, because the tag-stripping regex cleanly removes HTML tags without affecting the text content
 - Good, because LLMs have extensive HTML knowledge from web training data
 - Good, because `<a href="...">` links work naturally for Obsidian URIs with parentheses in the path
 - Bad, because HTML is more verbose per unit of formatting
@@ -58,8 +58,8 @@ The `sendChunked` function in `src/daemon/bot.ts` uses `parse_mode: 'HTML'` and 
 
 - Good, because MarkdownV2 is more compact than HTML
 - Good, because triple backticks for code blocks are intuitive
-- Bad, because MarkdownV2 has 15+ special characters that must be escaped when literal: `_ * [ ] ( ) ~ \` > # + - = | { } . !`
-- Bad, because the LLM cannot reliably predict which characters need escaping in context — especially parentheses in link text `[Stage 2(a)]`
+- Bad, because MarkdownV2 has 15+ special characters (underscore, asterisk, square brackets, parentheses, tilde, backtick, greater-than, hash, plus, minus, equals, pipe, curly braces, period, exclamation) that must be escaped when literal
+- Bad, because the LLM cannot reliably predict which characters need escaping in context — especially parentheses in link text such as `Stage 2(a)`
 - Bad, because the fallback regex strips all formatting characters from the text, losing content (parentheses, asterisks, brackets used in normal writing)
 - Bad, because Telegram's MarkdownV2 parser rejects the entire message on the first unescaped character — no partial rendering
 
