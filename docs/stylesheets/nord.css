@@ -165,7 +165,7 @@
 
 /* Header logo */
 .md-logo {
-  color: var(--nord8) !important;
+  color: var(--md-primary-bg-color) !important;
 }
 
 /* Navigation */
