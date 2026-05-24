@@ -15,7 +15,7 @@ tele-kb-bot install
 ```
 Telegram → GrammY Bot (long-polling) → PiSession per chat → LLM (deepseek-v4-flash)
                                   ↑
-                         Memory System (BM25 + daily logs)
+                         Memory System (QMD + BM25 + daily logs)
 ```
 
 ## Commands

@@ -47,7 +47,7 @@ The `setup` wizard walks you through connecting your Telegram bot and configurin
 | Feature | Description |
 |---------|-------------|
 | **💬 Chat from your phone** | Send messages, photos, documents, voice notes — the bot processes them via an LLM |
-| **🧠 Persistent memory** | Conversations and facts stored as plain markdown, searchable via BM25 |
+| **🧠 Persistent memory** | Conversations and facts stored as plain markdown, searchable via BM25 or QMD (semantic) |
 | **🔒 Private & secure** | Runs on your own machine. Zero secrets in the binary. User whitelist enforced. |
 | **📦 Single binary** | Built with `bun build --compile` — no Node.js, no npm, no runtime needed |
 | **🔄 Auto-restart** | launchd integration keeps it alive across reboots and crashes |
@@ -99,7 +99,7 @@ flowchart LR
         C["pi SDK\nAgentSession"]
         D["LLM\ndeepseek-v4-flash"]
         B --> C --> D
-        C --> E["BM25 search\n(memory/)"]
+|        C --> E["QMD / BM25 search\n(memory/)"]
         C --> F["Markdown files\n(memory/)"]
         C --> G["Session persistence\n(JSONL)"]
     end
@@ -119,7 +119,7 @@ flowchart LR
 | **Telegram** | [GrammY](https://grammy.dev) — long-polling bot framework |
 | **AI** | [pi SDK](https://github.com/mariozechner/pi) — per-chat agent sessions |
 | **LLM** | Opencode Go / deepseek-v4-flash with high reasoning |
-| **Search** | Pure-TypeScript BM25 (zero external deps) |
+| **Search** | BM25 (ephemeral) + [QMD](https://github.com/tobi/qmd) (persistent semantic search) |
 | **Logging** | [pino](https://getpino.io) — structured JSON logging |
 | **Packaging** | [GoReleaser](https://goreleaser.com) — cross-platform builds + Homebrew |
 
@@ -133,7 +133,7 @@ src/
 ├── cli/                  # CLI commands (setup, start, status, install-launchd, help)
 ├── config/               # Schema (Effect Schema), loader, paths, defaults
 ├── daemon/               # Bot controller, session registry, main
-├── memory/               # Scratchpad, BM25 search, context builder, manager
+├── memory/               # Scratchpad, QMD/BM25 search, context builder, manager
 ├── pi/                   # pi SDK provider, extensions, session factory
 └── telegram/             # Client, handler, media, streaming, chunking
 ```
