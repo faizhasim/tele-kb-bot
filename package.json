@@ -18,8 +18,8 @@
     "format:check": "biome format src/",
     "test:coverage": "vitest run --coverage",
     "test:coverage:watch": "vitest --coverage",
-    "docs:build": "mkdocs build --strict",
-    "docs:serve": "mkdocs serve"
+    "docs:build": "zensical build --clean",
+    "docs:serve": "zensical serve"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",

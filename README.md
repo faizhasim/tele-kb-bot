@@ -20,7 +20,7 @@
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/runtime-bun-000?style=flat&logo=bun" alt="Bun"></a>
   <a href="https://effect.website"><img src="https://img.shields.io/badge/built%20with-effect-FF6B6B?style=flat&logo=typescript" alt="Effect"></a>
   <a href="https://brew.sh"><img src="https://img.shields.io/badge/pkg-homebrew-FBB040?style=flat&logo=homebrew" alt="Homebrew"></a>
-  <a href="https://faizhasim.github.io/tele-kb-bot"><img src="https://img.shields.io/badge/docs-mkdocs-88C0D0?style=flat&logo=materialformkdocs&logoColor=white&labelColor=2E3440" alt="Docs"></a>
+  <a href="https://faizhasim.github.io/tele-kb-bot"><img src="https://img.shields.io/badge/docs-zensical-88C0D0?style=flat&logo=materialformkdocs&logoColor=white&labelColor=2E3440" alt="Docs"></a>
 </p>
 
 ---
@@ -154,7 +154,7 @@ Includes:
 | **Explanation** | Design decisions (ADRs), Homebrew strategy |
 | **ADRs** | All 9 architecture decision records promoted into the docs |
 
-To view locally: `pip install -r requirements.txt && mkdocs serve`
+To view locally: `pip install -r requirements.txt && zensical serve`
 
 ---
 

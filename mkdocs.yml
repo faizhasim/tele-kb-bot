@@ -101,9 +101,6 @@ markdown_extensions:
 plugins:
   - search:
       separator: '[\s\-_]+'
-  - git-revision-date-localized:
-      fallback_to_build_date: true
-  - mermaid2
 
 extra:
   social:
