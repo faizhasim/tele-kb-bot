@@ -34,6 +34,10 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ExtensionAPI, ExtensionFactory } from '@mariozechner/pi-coding-agent';
+// Tool parameter schemas use TypeBox because the pi SDK's registerTool()
+// constrains schema types to typebox's TSchema and uses typebox for
+// runtime validation and type inference (Static<TParams>).
+// Config validation uses @effect/schema instead — see src/config/.
 import { Type } from 'typebox';
 import type { MemoryContext } from '../memory/interface';
 import {
