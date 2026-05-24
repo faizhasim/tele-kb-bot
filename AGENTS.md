@@ -110,3 +110,12 @@ All architecturally significant decisions are documented as ADRs in `docs/explan
 - `grammy` — Telegram bot framework
 - `js-yaml` — YAML config parsing
 - `pino` — Structured logging
+
+## Agent Skills
+
+The `.agents/` directory contains reusable skill files that guide the agent when working on specific technologies. When Effect-TS code is involved, the agent MUST pre-read the `effect-ts` skill:
+
+- `.agents/skills/effect-ts/SKILL.md` — Effect-TS patterns: services, layers, error handling, composability, testing
+- `.agents/skills/effect-ts/references/` — Detailed reference files for specific domains (config, streams, runtime, services/layers, critical rules, etc.)
+
+This skill helps the agent write idiomatic, functional Effect-TS code rather than falling back to imperative patterns (try-catch, promises, mutation).
