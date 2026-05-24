@@ -18,7 +18,7 @@ On the target machine:
 
 ```bash
 # Add the tap (one-time)
-brew tap faizhasim/tele-kb-bot
+brew tap faizhasim/tele-kb-bot https://github.com/faizhasim/tele-kb-bot.git
 
 # Install the binary
 brew install tele-kb-bot

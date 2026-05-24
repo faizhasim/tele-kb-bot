@@ -11,7 +11,7 @@ By the end of this guide, you'll have a running Telegram bot that can chat with 
 ## Install
 
 ```bash
-brew tap faizhasim/tele-kb-bot
+brew tap faizhasim/tele-kb-bot https://github.com/faizhasim/tele-kb-bot.git
 brew install tele-kb-bot
 ```
 

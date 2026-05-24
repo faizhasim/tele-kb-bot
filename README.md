@@ -28,7 +28,7 @@
 ## 🚀 Quick Start
 
 ```bash
-brew tap faizhasim/tele-kb-bot
+brew tap faizhasim/tele-kb-bot https://github.com/faizhasim/tele-kb-bot.git
 brew install tele-kb-bot
 tele-kb-bot setup
 ```
