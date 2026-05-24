@@ -27,7 +27,8 @@ describe('helpCommand', () => {
     expect(output).toContain('setup');
     expect(output).toContain('start');
     expect(output).toContain('status');
-    expect(output).toContain('install');
+    expect(output).toContain('launchd');
+    expect(output).toContain('systemd');
     expect(output).toContain('version');
     expect(output).toContain('help');
   });

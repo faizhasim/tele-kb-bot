@@ -30,10 +30,10 @@ const mockClack = vi.hoisted(() => ({
 vi.mock('@clack/prompts', () => mockClack);
 
 // Mock dynamic imports for interactive mode prompts (install, index)
-const mockInstall = vi.hoisted(() => ({ installCommand: vi.fn() }));
+const mockLaunchd = vi.hoisted(() => ({ launchdAddCommand: vi.fn() }));
 const mockIndex = vi.hoisted(() => ({ indexCommand: vi.fn() }));
 
-vi.mock('./install', () => mockInstall);
+vi.mock('./launchd', () => mockLaunchd);
 vi.mock('./index', () => mockIndex);
 
 import type { CLIOptions } from './main';
@@ -1094,7 +1094,7 @@ describe('setupCommand', () => {
 
       await setupCommand(makeOptions());
 
-      expect(mockInstall.installCommand).toHaveBeenCalledWith(makeOptions());
+      expect(mockLaunchd.launchdAddCommand).toHaveBeenCalledWith(makeOptions());
     });
 
     it('skips installCommand when install prompt is no', async () => {
@@ -1109,7 +1109,7 @@ describe('setupCommand', () => {
 
       await setupCommand(makeOptions());
 
-      expect(mockInstall.installCommand).not.toHaveBeenCalled();
+      expect(mockLaunchd.launchdAddCommand).not.toHaveBeenCalled();
     });
 
     it('calls indexCommand for persistent mode with vaults when user says yes', async () => {

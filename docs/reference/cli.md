@@ -10,7 +10,10 @@
 | `start`             | Run the bot daemon in the foreground         |
 | `status`            | Show configuration and health status         |
 | `index`             | Build or clear the markdown search index     |
-| `install-launchd`   | Create and load a launchd service plist      |
+| `launchd add`       | Create and load a launchd service plist      |
+| `launchd remove`    | Unload and remove launchd service plist      |
+| `systemd add`       | Create and start a systemd service (Linux)   |
+| `systemd remove`    | Stop and remove systemd service (Linux)      |
 | `version`           | Print the binary version                     |
 | `help`              | Print usage information                      |
 
@@ -113,14 +116,17 @@ tele-kb-bot index clear
 
 Requires the `qmd` binary to be installed and in `PATH`, or accessible via the `QMD_BINARY_PATH` env var.
 
-### `install-launchd`
+### `launchd add|remove`
 
-Create a macOS launchd service plist at `~/Library/LaunchAgents/com.tele-kb-bot.plist` and optionally load it.
+Create or remove a macOS launchd service plist at `~/Library/LaunchAgents/com.tele-kb-bot.plist`.
 
 ```bash
-tele-kb-bot install-launchd
-```
+# Create and load the service
+tele-kb-bot launchd add
 
+# Unload and remove the service
+tele-kb-bot launchd remove
+```
 **Generated plist behaviour:**
 
 - Starts the bot automatically on login (`RunAtLoad`)
@@ -130,6 +136,24 @@ tele-kb-bot install-launchd
 - Captures stderr to `<config_dir>/logs/err.log`
 
 After writing the plist, the command prompts to load the service immediately via `launchctl bootstrap`.
+
+### `systemd add|remove`
+
+Create or remove a Linux systemd user service at `~/.config/systemd/user/tele-kb-bot.service`.
+
+```bash
+# Create, enable, and start the service
+tele-kb-bot systemd add
+
+# Stop, disable, and remove the service
+tele-kb-bot systemd remove
+```
+
+**Generated service behaviour:**
+
+- Starts automatically on login (`WantedBy=default.target`)
+- Restarts on failure with 5-second delay
+- Captures logs via journald: `journalctl --user -u tele-kb-bot -f`
 
 ### `version`
 

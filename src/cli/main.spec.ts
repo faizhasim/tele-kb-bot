@@ -11,16 +11,24 @@ import { parseArgs, runCLI } from './main';
 vi.mock('./help', () => ({ helpCommand: vi.fn() }));
 vi.mock('./setup', () => ({ setupCommand: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('./status', () => ({ statusCommand: vi.fn().mockResolvedValue(undefined) }));
-vi.mock('./install', () => ({ installCommand: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('./launchd', () => ({
+  launchdAddCommand: vi.fn().mockResolvedValue(undefined),
+  launchdRemoveCommand: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('./systemd', () => ({
+  systemdAddCommand: vi.fn().mockResolvedValue(undefined),
+  systemdRemoveCommand: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('./index', () => ({ indexCommand: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../daemon/main', () => ({ startDaemon: vi.fn().mockResolvedValue(undefined) }));
 
 import { startDaemon } from '../daemon/main';
 import { helpCommand } from './help';
 import { indexCommand } from './index';
-import { installCommand } from './install';
+import { launchdAddCommand, launchdRemoveCommand } from './launchd';
 import { setupCommand } from './setup';
 import { statusCommand } from './status';
+import { systemdAddCommand, systemdRemoveCommand } from './systemd';
 
 describe('parseArgs', () => {
   it('parses help command from empty args', () => {
@@ -256,10 +264,42 @@ describe('runCLI', () => {
     }
   });
 
-  it('calls installCommand for install-launchd', async () => {
+  it('routes launchd add to launchdAddCommand', async () => {
+    await runCLI(['launchd', 'add']);
+    expect(launchdAddCommand).toHaveBeenCalledTimes(1);
+    expect(launchdAddCommand).toHaveBeenCalledWith(expect.objectContaining({ command: 'launchd', subcommand: 'add' }));
+  });
+
+  it('routes launchd remove to launchdRemoveCommand', async () => {
+    await runCLI(['launchd', 'remove']);
+    expect(launchdRemoveCommand).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes systemd add to systemdAddCommand', async () => {
+    await runCLI(['systemd', 'add']);
+    expect(systemdAddCommand).toHaveBeenCalledTimes(1);
+    expect(systemdAddCommand).toHaveBeenCalledWith(expect.objectContaining({ command: 'systemd', subcommand: 'add' }));
+  });
+
+  it('routes systemd remove to systemdRemoveCommand', async () => {
+    await runCLI(['systemd', 'remove']);
+    expect(systemdRemoveCommand).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows help for unknown launchd subcommand', async () => {
+    await runCLI(['launchd', 'unknown']);
+    expect(helpCommand).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows help for unknown systemd subcommand', async () => {
+    await runCLI(['systemd', 'unknown']);
+    expect(helpCommand).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes install-launchd to launchdAddCommand (backward compat)', async () => {
     await runCLI(['install-launchd']);
-    expect(installCommand).toHaveBeenCalledTimes(1);
-    expect(installCommand).toHaveBeenCalledWith(expect.objectContaining({ command: 'install-launchd' }));
+    expect(launchdAddCommand).toHaveBeenCalledTimes(1);
+    expect(launchdAddCommand).toHaveBeenCalledWith(expect.objectContaining({ command: 'install-launchd' }));
   });
 
   it('calls indexCommand for index', async () => {

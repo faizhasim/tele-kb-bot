@@ -84,7 +84,7 @@ tele-kb-bot start
 Message your bot on Telegram. It should reply.
 
 !!! tip "Want to run 24/7?"
-    After verifying, run `tele-kb-bot install-launchd` to set up automatic restart on login and crashes.
+    After verifying, run `tele-kb-bot launchd add` to set up automatic restart on login and crashes.
 
 ---
 

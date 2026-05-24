@@ -1,20 +1,22 @@
 /**
- * tele-kb-bot install — macOS launchd service management.
+ * tele-kb-bot launchd — macOS launchd service management.
  *
- * Creates ~/Library/LaunchAgents/com.tele-kb-bot.plist
- * Offers to load the service via launchctl bootstrap.
+ * launchd add      Create ~/Library/LaunchAgents/com.tele-kb-bot.plist
+ *                  and load via launchctl bootstrap (idempotent).
+ * launchd remove   Unload and remove the plist.
  *
  * @module
  */
 
 import { execSync } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { ensureConfigDirsSync, resolveConfigDir } from '../config/paths';
 import { BINARY_NAME } from '../constants';
 import { createCLILogger } from '../logger';
 import type { CLIOptions } from './main';
+import { blank, error, info, success } from './output';
 
 const PLIST_LABEL = 'com.tele-kb-bot';
 const LAUNCH_AGENTS_DIR = join(homedir(), 'Library', 'LaunchAgents');
@@ -67,16 +69,13 @@ function generatePlist(configDir: string, binaryPath: string): string {
  * Tries the current executable path first, then common brew install locations.
  */
 function resolveBinaryPath(): string {
-  // When running as compiled binary, process.argv[0] is the binary path
   const currentExe = process.argv[0];
   if (currentExe && (currentExe.includes('tele-kb-bot') || currentExe.includes('bun'))) {
-    // If it's a compiled binary, use its path directly
     if (!currentExe.includes('bun')) {
       return currentExe;
     }
   }
 
-  // Fallback: common Homebrew install paths
   const candidates = [
     `/opt/homebrew/bin/${BINARY_NAME}`,
     `/usr/local/bin/${BINARY_NAME}`,
@@ -89,74 +88,89 @@ function resolveBinaryPath(): string {
     }
   }
 
-  // Last resort
   return `/opt/homebrew/bin/${BINARY_NAME}`;
 }
 
 /**
- * Install the launchd plist for tele-kb-bot.
- *
- * Steps:
- * 1. Generate plist XML
- * 2. Write to ~/Library/LaunchAgents/com.tele-kb-bot.plist
- * 3. Offer to load: launchctl bootstrap gui/$UID ...
- * 4. Print management commands
+ * Create and load the launchd plist (idempotent).
  */
-export async function installCommand(_options: CLIOptions): Promise<void> {
+export async function launchdAddCommand(_options: CLIOptions): Promise<void> {
   const log = createCLILogger(BINARY_NAME);
   const configDir = _options.configOverride ?? resolveConfigDir();
   const binaryPath = resolveBinaryPath();
 
-  // Ensure config dir and logs subdir exist
   ensureConfigDirsSync(configDir);
-
   log.info({ binaryPath, plistPath: PLIST_PATH }, 'Installing launchd service');
 
-  // Generate and write plist
   const plistContent = generatePlist(configDir, binaryPath);
   writeFileSync(PLIST_PATH, plistContent, { mode: 0o644 });
 
-  console.log(`\n  ✓ LaunchAgent plist written to:`);
-  console.log(`    ${PLIST_PATH}`);
-  console.log();
-  console.log(`  Binary path: ${binaryPath}`);
-  console.log(`  Config path: ${configDir}`);
-  console.log();
+  blank();
+  success('LaunchAgent plist written to:');
+  info(`  ${PLIST_PATH}`);
+  blank();
+  info(`Binary path: ${binaryPath}`);
+  info(`Config path: ${configDir}`);
+  blank();
 
-  // Offer to load the service
-  const loadService = await confirm('Load the service now? (launchctl bootstrap)', true);
+  const loadService = await confirm('Load the service now?', true);
   if (loadService) {
     try {
       const uid = process.getuid?.() ?? 0;
       const bootstrapCmd = `launchctl bootstrap gui/${uid} "${PLIST_PATH}"`;
       log.info({ cmd: bootstrapCmd }, 'Loading launchd service');
       execSync(bootstrapCmd, { stdio: 'inherit' });
-      console.log('  ✓ Service loaded successfully.');
-    } catch (_err) {
-      // The service may already be loaded — try bootout first, then bootstrap
+      success('Service loaded successfully.');
+    } catch {
       try {
         const uid = process.getuid?.() ?? 0;
         execSync(`launchctl bootout gui/${uid}/${PLIST_LABEL} 2>/dev/null || true`, { stdio: 'ignore' });
-        execSync(`launchctl bootstrap gui/${uid} "${PLIST_PATH}"`, {
-          stdio: 'inherit',
-        });
-        console.log('  ✓ Service reloaded successfully.');
+        execSync(`launchctl bootstrap gui/${uid} "${PLIST_PATH}"`, { stdio: 'inherit' });
+        success('Service reloaded successfully.');
       } catch (err2) {
-        console.error(`  ✗ Failed to load service: ${err2 instanceof Error ? err2.message : String(err2)}`);
-        console.error('    You can load it manually:');
-        console.error(`    launchctl bootstrap gui/$(id -u) "${PLIST_PATH}"`);
+        error(`Failed to load service: ${err2 instanceof Error ? err2.message : String(err2)}`);
+        info('You can load it manually:');
+        info(`  launchctl bootstrap gui/$(id -u) "${PLIST_PATH}"`);
       }
     }
   }
 
-  console.log();
-  console.log('  Management commands:');
-  console.log(`    Start:   launchctl bootstrap gui/$(id -u) "${PLIST_PATH}"`);
-  console.log(`    Stop:    launchctl bootout gui/$(id -u)/${PLIST_LABEL}`);
-  console.log(`    Status:  launchctl list | grep ${PLIST_LABEL}`);
-  console.log(`    Logs:    tail -f ${configDir}/logs/out.log`);
-  console.log(`    Errors:  tail -f ${configDir}/logs/err.log`);
-  console.log();
+  blank();
+  info('Management commands:');
+  info(`  Start:   launchctl bootstrap gui/$(id -u) "${PLIST_PATH}"`);
+  info(`  Stop:    launchctl bootout gui/$(id -u)/${PLIST_LABEL}`);
+  info(`  Status:  launchctl list | grep ${PLIST_LABEL}`);
+  info(`  Logs:    tail -f ${configDir}/logs/out.log`);
+  info(`  Errors:  tail -f ${configDir}/logs/err.log`);
+  blank();
+}
+
+/**
+ * Unload and remove the launchd plist.
+ */
+export async function launchdRemoveCommand(): Promise<void> {
+  const log = createCLILogger(BINARY_NAME);
+
+  if (!existsSync(PLIST_PATH)) {
+    info('No launchd plist found — nothing to remove.');
+    blank();
+    return;
+  }
+
+  log.info({ plistPath: PLIST_PATH }, 'Removing launchd service');
+
+  try {
+    const uid = process.getuid?.() ?? 0;
+    execSync(`launchctl bootout gui/${uid}/${PLIST_LABEL}`, { stdio: 'ignore' });
+    success('Service unloaded.');
+  } catch {
+    log.debug('Service was not loaded.');
+    info('Service was not running, skipping unload.');
+  }
+
+  unlinkSync(PLIST_PATH);
+  success(`Plist removed: ${PLIST_PATH}`);
+  blank();
 }
 
 /**

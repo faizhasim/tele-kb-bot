@@ -23,7 +23,7 @@ builds:
       - windows-x64-modern
     hooks:
       pre: |
-        perl -i -pe 's/VERSION = ".*"/VERSION = "{{ .Version }}"/' src/constants.ts
+        perl -i -pe "s/VERSION = '.*'/VERSION = '{{ .Version }}'/" src/constants.ts
 
 archives:
   - id: default
@@ -33,7 +33,7 @@ archives:
         formats: ["zip"]
     name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
     files:
-      - none*
+      - package.json
 
 checksum:
   name_template: "SHA256SUMS.txt"
@@ -52,7 +52,11 @@ brews:
       system "#{bin}/tele-kb-bot version"
     install: |
       bin.install "tele-kb-bot"
+      bin.install "package.json"
     caveats: |
+      Before uninstalling, remove the launchd service:
+        tele-kb-bot launchd remove
+
       Optional — qmd enables semantic memory search (vector + hybrid):
         brew install qmd                  # uses Homebrew's Bun
         # or if you manage Bun via mise:

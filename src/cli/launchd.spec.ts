@@ -1,8 +1,9 @@
 /**
- * Tests for the CLI install command.
+ * Tests for the CLI launchd service management commands.
  *
- * Tests installCommand behavior through its public interface,
- * controlling mocks to verify internal function behavior indirectly.
+ * Tests launchdAddCommand and launchdRemoveCommand behavior through their
+ * public interfaces, controlling mocks to verify internal function behavior
+ * indirectly.
  *
  * @module
  */
@@ -18,6 +19,7 @@ const {
   mockExecSync,
   mockExistsSync,
   mockWriteFileSync,
+  mockUnlinkSync,
   mockMkdirSync,
   mockResolveConfigDir,
   mockEnsureConfigDirsSync,
@@ -27,6 +29,7 @@ const {
   mockExecSync: vi.fn(),
   mockExistsSync: vi.fn(),
   mockWriteFileSync: vi.fn(),
+  mockUnlinkSync: vi.fn(),
   mockMkdirSync: vi.fn(),
   mockResolveConfigDir: vi.fn().mockReturnValue('/Users/test/.config/tele-kb-bot'),
   mockEnsureConfigDirsSync: vi.fn(),
@@ -48,6 +51,7 @@ vi.mock('node:child_process', () => ({
 vi.mock('node:fs', () => ({
   existsSync: mockExistsSync,
   writeFileSync: mockWriteFileSync,
+  unlinkSync: mockUnlinkSync,
   mkdirSync: mockMkdirSync,
 }));
 
@@ -73,7 +77,7 @@ vi.mock('node:os', () => ({
 
 // ─── Module imports (after vi.mock) ─────────────────────────────────
 
-import { installCommand } from './install';
+import { launchdAddCommand, launchdRemoveCommand } from './launchd';
 
 // ─── Constants ──────────────────────────────────────────────────────
 
@@ -82,10 +86,10 @@ const DEFAULT_CONFIG_DIR = '/Users/test/.config/tele-kb-bot';
 const LAUNCH_AGENTS_PATH = join(homedir(), 'Library', 'LaunchAgents', PLIST_FILENAME);
 
 const defaultOptions: CLIOptions = {
-  command: 'install-launchd',
+  command: 'launchd',
   configOverride: undefined,
   nonInteractive: false,
-  rawArgs: ['install-launchd'],
+  rawArgs: ['launchd'],
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -122,9 +126,9 @@ function getConfigDirFromPlist(plist: string): string {
   return match?.[1] ?? '';
 }
 
-// ─── Tests ──────────────────────────────────────────────────────────
+// ─── Tests: launchdAddCommand ───────────────────────────────────────
 
-describe('installCommand', () => {
+describe('launchdAddCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -149,9 +153,9 @@ describe('installCommand', () => {
   // generatePlist output correctness
   // ──────────────────────────────────────────────────────────────────
 
-  describe('generatePlist (tested through installCommand)', () => {
+  describe('generatePlist (tested through launchdAddCommand)', () => {
     it('produces XML plist with correct config dir and binary path', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(plist).toContain('<?xml version="1.0" encoding="UTF-8"?>');
@@ -161,7 +165,7 @@ describe('installCommand', () => {
     });
 
     it('includes TELE_KB_BOT_CONFIG environment variable with config dir', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(plist).toContain('TELE_KB_BOT_CONFIG');
@@ -169,14 +173,14 @@ describe('installCommand', () => {
     });
 
     it('includes PATH environment variable', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(plist).toContain('/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin');
     });
 
     it('includes KeepAlive, RunAtLoad, and ThrottleInterval keys', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(plist).toContain('<key>KeepAlive</key>');
@@ -186,7 +190,7 @@ describe('installCommand', () => {
     });
 
     it('includes StandardOutPath and StandardErrorPath pointing to configDir/logs/', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(plist).toContain(`${DEFAULT_CONFIG_DIR}/logs/out.log`);
@@ -194,7 +198,7 @@ describe('installCommand', () => {
     });
 
     it('includes binary path and start argument in ProgramArguments', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       const binary = getBinaryFromPlist(plist);
@@ -204,15 +208,15 @@ describe('installCommand', () => {
   });
 
   // ──────────────────────────────────────────────────────────────────
-  // resolveBinaryPath behavior (tested through installCommand)
+  // resolveBinaryPath behavior (tested through launchdAddCommand)
   // ──────────────────────────────────────────────────────────────────
 
-  describe('resolveBinaryPath (tested through installCommand)', () => {
+  describe('resolveBinaryPath (tested through launchdAddCommand)', () => {
     it('returns process.argv[0] when it is a non-bun path containing tele-kb-bot', async () => {
       const customBinaryPath = '/usr/local/bin/tele-kb-bot';
       process.argv[0] = customBinaryPath;
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(getBinaryFromPlist(plist)).toBe(customBinaryPath);
@@ -228,7 +232,7 @@ describe('installCommand', () => {
         return true;
       });
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(getBinaryFromPlist(plist)).toBe('/opt/homebrew/bin/tele-kb-bot');
@@ -242,7 +246,7 @@ describe('installCommand', () => {
         return true;
       });
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(getBinaryFromPlist(plist)).toBe('/usr/local/bin/tele-kb-bot');
@@ -257,7 +261,7 @@ describe('installCommand', () => {
         return true;
       });
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(getBinaryFromPlist(plist)).toBe('/Users/test/.local/bin/tele-kb-bot');
@@ -267,7 +271,7 @@ describe('installCommand', () => {
       process.argv[0] = '/usr/local/bin/bun';
       mockExistsSync.mockReturnValue(false);
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
       expect(getBinaryFromPlist(plist)).toBe('/opt/homebrew/bin/tele-kb-bot');
@@ -275,12 +279,12 @@ describe('installCommand', () => {
   });
 
   // ──────────────────────────────────────────────────────────────────
-  // installCommand integration behavior
+  // launchdAddCommand integration behavior
   // ──────────────────────────────────────────────────────────────────
 
-  describe('installCommand behavior', () => {
+  describe('launchdAddCommand behavior', () => {
     it('writes plist to ~/Library/LaunchAgents/com.tele-kb-bot.plist', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       expect(mockWriteFileSync).toHaveBeenCalledOnce();
       const call0 = mockWriteFileSync.mock.calls[0];
@@ -289,14 +293,14 @@ describe('installCommand', () => {
     });
 
     it('ensures config directories before writing', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       expect(mockEnsureConfigDirsSync).toHaveBeenCalledWith(DEFAULT_CONFIG_DIR);
       expect(mockEnsureConfigDirsSync).toHaveBeenCalledBefore(mockWriteFileSync);
     });
 
     it('loads service via launchctl bootstrap when confirm returns true', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       expect(mockExecSync).toHaveBeenCalled();
       const allCalls: Array<Array<unknown>> = mockExecSync.mock.calls;
@@ -307,7 +311,7 @@ describe('installCommand', () => {
     it('skips service loading when confirm returns false (skip confirm)', async () => {
       mockQuestion.mockImplementation((_q: string, cb: (a: string) => void) => cb('n'));
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       // Plist is still written
       expect(mockWriteFileSync).toHaveBeenCalledOnce();
@@ -323,7 +327,7 @@ describe('installCommand', () => {
         .mockImplementationOnce(() => {}) // bootout (ignored)
         .mockImplementationOnce(() => {}); // retry bootstrap
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       expect(mockExecSync).toHaveBeenCalledTimes(3);
       const allCalls: Array<Array<unknown>> = mockExecSync.mock.calls;
@@ -342,9 +346,9 @@ describe('installCommand', () => {
           throw new Error('second bootstrap also failed');
         });
 
-      const consoleErrorSpy = vi.spyOn(console, 'error');
+      const consoleErrorSpy = vi.spyOn(console, 'log');
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       const allCalls: Array<Array<unknown>> = consoleErrorSpy.mock.calls;
@@ -363,9 +367,9 @@ describe('installCommand', () => {
           throw 'string error from launchctl'; // non-Error throw
         });
 
-      const consoleErrorSpy = vi.spyOn(console, 'error');
+      const consoleErrorSpy = vi.spyOn(console, 'log');
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       const allCalls: Array<Array<unknown>> = consoleErrorSpy.mock.calls;
@@ -377,7 +381,7 @@ describe('installCommand', () => {
     it('loads service when user presses Enter (default yes)', async () => {
       mockQuestion.mockImplementation((_q: string, cb: (a: string) => void) => cb(''));
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       // Default is yes, so bootstrap should be attempted
       expect(mockExecSync).toHaveBeenCalled();
@@ -390,10 +394,10 @@ describe('installCommand', () => {
       const options: CLIOptions = {
         ...defaultOptions,
         configOverride: '/custom/dir',
-        rawArgs: ['install-launchd', '--config', '/custom/dir'],
+        rawArgs: ['launchd', '--config', '/custom/dir'],
       };
 
-      await installCommand(options);
+      await launchdAddCommand(options);
 
       const plist = getCapturedPlist();
       expect(getConfigDirFromPlist(plist)).toBe('/custom/dir');
@@ -406,7 +410,7 @@ describe('installCommand', () => {
         configOverride: customConfigDir,
       };
 
-      await installCommand(options);
+      await launchdAddCommand(options);
 
       const plist = getCapturedPlist();
       expect(getConfigDirFromPlist(plist)).toBe(customConfigDir);
@@ -423,7 +427,7 @@ describe('installCommand', () => {
         configOverride: customConfigDir,
       };
 
-      await installCommand(options);
+      await launchdAddCommand(options);
 
       const plist = getCapturedPlist();
       expect(plist).toContain(`${customConfigDir}/logs/out.log`);
@@ -431,7 +435,7 @@ describe('installCommand', () => {
     });
 
     it('logs binary path and plist path before writing', async () => {
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       expect(mockCreateCLILogger).toHaveBeenCalled();
       const logger = mockCreateCLILogger.mock.results[0]?.value;
@@ -446,7 +450,7 @@ describe('installCommand', () => {
       const consoleSpy = vi.spyOn(console, 'log');
       mockQuestion.mockImplementation((_q: string, cb: (a: string) => void) => cb('n'));
 
-      await installCommand(defaultOptions);
+      await launchdAddCommand(defaultOptions);
 
       const allCalls: Array<Array<unknown>> = consoleSpy.mock.calls;
       const allOutput = allCalls.map((args) => String(args[0])).join(' ');
@@ -457,5 +461,49 @@ describe('installCommand', () => {
       expect(allOutput).toContain('logs/out.log');
       expect(allOutput).toContain('logs/err.log');
     });
+  });
+});
+
+// ─── Tests: launchdRemoveCommand ────────────────────────────────────
+
+describe('launchdRemoveCommand', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockExistsSync.mockReturnValue(true);
+
+    // Silence console output
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('does nothing when plist does not exist', async () => {
+    mockExistsSync.mockReturnValue(false);
+
+    await launchdRemoveCommand();
+
+    expect(mockUnlinkSync).not.toHaveBeenCalled();
+    expect(mockExecSync).not.toHaveBeenCalled();
+  });
+
+  it('unloads service and removes plist', async () => {
+    await launchdRemoveCommand();
+
+    expect(mockExecSync).toHaveBeenCalledWith(expect.stringContaining('launchctl bootout'), expect.any(Object));
+    expect(mockUnlinkSync).toHaveBeenCalled();
+  });
+
+  it('handles service not running gracefully', async () => {
+    mockExecSync.mockImplementationOnce(() => {
+      throw new Error('service not loaded');
+    });
+
+    await launchdRemoveCommand();
+
+    // Plist is still deleted even when unload fails
+    expect(mockUnlinkSync).toHaveBeenCalled();
   });
 });

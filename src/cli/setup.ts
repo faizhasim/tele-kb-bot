@@ -443,8 +443,8 @@ export async function setupCommand(options: CLIOptions): Promise<void> {
     }),
   );
   if (doInstall) {
-    const { installCommand } = await import('./install');
-    await installCommand(options);
+    const { launchdAddCommand } = await import('./launchd');
+    await launchdAddCommand(options);
   }
 
   // ── Run index? ─────────────────────────────────────────────────-

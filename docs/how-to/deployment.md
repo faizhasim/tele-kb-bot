@@ -27,7 +27,7 @@ brew install tele-kb-bot
 tele-kb-bot setup
 
 # Install launchd service for auto-start
-tele-kb-bot install-launchd
+tele-kb-bot launchd add
 ```
 
 The `setup` wizard writes configuration to `~/.config/tele-kb-bot/config.yaml`.
@@ -44,7 +44,7 @@ It stores your Telegram bot token and LLM API key with `0600` permissions.
 
 ## launchd Lifecycle
 
-The `install-launchd` command writes a property list to
+The `launchd add` command writes a property list to
 `~/Library/LaunchAgents/com.tele-kb-bot.plist` and offers to load it immediately.
 The plist configures the bot to start on login and restart automatically on crash.
 
@@ -121,5 +121,5 @@ launchctl bootout gui/$(id -u)/com.tele-kb-bot 2>/dev/null || true
 rm -f ~/Library/LaunchAgents/com.tele-kb-bot.plist
 
 # Reinstall
-tele-kb-bot install-launchd
+tele-kb-bot launchd add
 ```
