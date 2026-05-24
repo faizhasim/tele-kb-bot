@@ -99,7 +99,7 @@ flowchart LR
         C["pi SDK\nAgentSession"]
         D["LLM\ndeepseek-v4-flash"]
         B --> C --> D
-|        C --> E["QMD / BM25 search\n(memory/)"]
+        C --> E["QMD / BM25 search\n(memory/)"]
         C --> F["Markdown files\n(memory/)"]
         C --> G["Session persistence\n(JSONL)"]
     end
