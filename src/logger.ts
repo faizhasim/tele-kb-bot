@@ -71,26 +71,25 @@ const EffectLogger = Context.GenericTag<EffectLogger>('@tele-kb-bot/logger');
 // ─── Pino Backend ───────────────────────────────────────────────────
 
 const createPinoLogger = (name: string, level: string): pino.Logger =>
-  pino({
-    name,
-    level,
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        translateTime: 'HH:MM:ss.l',
-        ignore: 'pid,hostname',
+  pino(
+    {
+      name,
+      level,
+      redact: {
+        paths: ['*.bot_token', '*.api_key', '*.token', '*.secret'],
+        censor: '***redacted***',
+      },
+      serializers: {
+        err: pino.stdSerializers.err,
+        error: pino.stdSerializers.err,
       },
     },
-    redact: {
-      paths: ['*.bot_token', '*.api_key', '*.token', '*.secret'],
-      censor: '***redacted***',
-    },
-    serializers: {
-      err: pino.stdSerializers.err,
-      error: pino.stdSerializers.err,
-    },
-  });
+    pretty({
+      colorize: true,
+      translateTime: 'HH:MM:ss.l',
+      ignore: 'pid,hostname',
+    }),
+  );
 
 /**
  * Create a pino logger that writes to both stdout (pretty) and a rotating log file.
