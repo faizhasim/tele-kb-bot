@@ -5,47 +5,54 @@
 class TeleKbBot < Formula
   desc "Telegram knowledge base bot powered by the pi SDK"
   homepage "https://github.com/faizhasim/tele-kb-bot"
-  version "0.1.2"
+  version "0.1.3"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.2/tele-kb-bot-darwin-amd64.tar.gz"
-      sha256 "2b25ee2c6ad83251877ea1e6bf9a3f1452604fdd458d77001e87ac23dea5e966"
+      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.3/tele-kb-bot-darwin-amd64.tar.gz"
+      sha256 "e4d865cf5fab2cba89b52c3b070770b910c420259cd7227017bbc90aebc07452"
 
       define_method(:install) do
         bin.install "tele-kb-bot"
+        bin.install "package.json"
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.2/tele-kb-bot-darwin-arm64.tar.gz"
-      sha256 "8771460b954248dbe01798cd54e5da53771dd61c7cc917f645573089d379e37b"
+      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.3/tele-kb-bot-darwin-arm64.tar.gz"
+      sha256 "40ae1c2853e234e874b1e955e53ca77ce0b976234ae18d6d866edd638e3404b3"
 
       define_method(:install) do
         bin.install "tele-kb-bot"
+        bin.install "package.json"
       end
     end
   end
 
   on_linux do
     if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
-      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.2/tele-kb-bot-linux-amd64.tar.gz"
-      sha256 "a4b41ee24b762a58cdeef99b94f3eb51c248deabdf1431c6f1fa2d792e33b0e7"
+      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.3/tele-kb-bot-linux-amd64.tar.gz"
+      sha256 "19b193a6ef43ebffa888bdd7c93723b1bdbf90ef672a6c4b76dd67d52dec54e5"
       define_method(:install) do
         bin.install "tele-kb-bot"
+        bin.install "package.json"
       end
     end
     if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.2/tele-kb-bot-linux-arm64.tar.gz"
-      sha256 "0522d39b064b038ddb754a2a7ed69457764e5c1c68d9f8b40667cbd49cf82dff"
+      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.3/tele-kb-bot-linux-arm64.tar.gz"
+      sha256 "4d81dd9dfa944e4fd86433ccd97709d47a6d6c0b7e44a35f480d6926bbd7b4b5"
       define_method(:install) do
         bin.install "tele-kb-bot"
+        bin.install "package.json"
       end
     end
   end
 
   def caveats
     <<~EOS
+      Before uninstalling, remove the launchd service:
+        tele-kb-bot launchd remove
+
       Optional — qmd enables semantic memory search (vector + hybrid):
         brew install qmd                  # uses Homebrew's Bun
         # or if you manage Bun via mise:
