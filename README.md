@@ -146,6 +146,7 @@ Full documentation is available at **[faizhasim.github.io/tele-kb-bot](https://f
 
 Includes:
 
+| Section | What you'll find |
 |---------|-----------------|
 | **Getting Started** | Quick start, setup guide, first chat |
 | **How-to Guides** | Deployment, development, Nix/home-manager |
