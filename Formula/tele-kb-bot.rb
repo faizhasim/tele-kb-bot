@@ -5,21 +5,21 @@
 class TeleKbBot < Formula
   desc "Telegram knowledge base bot powered by the pi SDK"
   homepage "https://github.com/faizhasim/tele-kb-bot"
-  version "0.1.1"
+  version "0.1.2"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.1/tele-kb-bot-darwin-amd64.tar.gz"
-      sha256 "d71ce9746ad5e8605e4ce5874d784252aac86bd4e03a89cd37bcf741da2825e6"
+      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.2/tele-kb-bot-darwin-amd64.tar.gz"
+      sha256 "2b25ee2c6ad83251877ea1e6bf9a3f1452604fdd458d77001e87ac23dea5e966"
 
       define_method(:install) do
         bin.install "tele-kb-bot"
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.1/tele-kb-bot-darwin-arm64.tar.gz"
-      sha256 "f507e0c7dec9823b5618f3353c09c057a15dce6bc7c96a2814811d795e78da6c"
+      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.2/tele-kb-bot-darwin-arm64.tar.gz"
+      sha256 "8771460b954248dbe01798cd54e5da53771dd61c7cc917f645573089d379e37b"
 
       define_method(:install) do
         bin.install "tele-kb-bot"
@@ -29,15 +29,15 @@ class TeleKbBot < Formula
 
   on_linux do
     if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
-      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.1/tele-kb-bot-linux-amd64.tar.gz"
-      sha256 "bbb0eb4b2d06a04631ce56935801b119fd98a2e98840aebe96a2dd528895bb2e"
+      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.2/tele-kb-bot-linux-amd64.tar.gz"
+      sha256 "a4b41ee24b762a58cdeef99b94f3eb51c248deabdf1431c6f1fa2d792e33b0e7"
       define_method(:install) do
         bin.install "tele-kb-bot"
       end
     end
     if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.1/tele-kb-bot-linux-arm64.tar.gz"
-      sha256 "2d3ba997153959854a5b6c4c7b37b5a1ae3fe213dc61356631338b6982575c92"
+      url "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.2/tele-kb-bot-linux-arm64.tar.gz"
+      sha256 "0522d39b064b038ddb754a2a7ed69457764e5c1c68d9f8b40667cbd49cf82dff"
       define_method(:install) do
         bin.install "tele-kb-bot"
       end
