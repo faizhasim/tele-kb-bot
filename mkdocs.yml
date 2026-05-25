@@ -6,7 +6,7 @@ site_description: Chat with an LLM from your phone. Search a local knowledge bas
 site_url: https://faizhasim.github.io/tele-kb-bot
 repo_url: https://github.com/faizhasim/tele-kb-bot
 repo_name: faizhasim/tele-kb-bot
-copyright: Copyright &copy; 2026 Mohd Faiz Hasim
+copyright: Copyright &copy; 2026 faizhasim
 
 theme:
   name: material

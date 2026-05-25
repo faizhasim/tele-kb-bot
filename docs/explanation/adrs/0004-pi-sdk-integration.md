@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-05-21
-decision-makers: Mohd Faiz Hasim
+decision-makers: faizhasim
 ---
 
 # pi SDK Integration Architecture

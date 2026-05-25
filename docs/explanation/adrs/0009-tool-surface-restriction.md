@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-05-23
-decision-makers: Mohd Faiz Hasim
+decision-makers: faizhasim
 ---
 
 # Agent Tool Surface Restriction

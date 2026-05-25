@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-05-25
-decision-makers: Mohd Faiz Hasim
+decision-makers: faizhasim
 ---
 
 # Tool Surface Refinements — Remove telegram_attach, Feature Flag Search Tools

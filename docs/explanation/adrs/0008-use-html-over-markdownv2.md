@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-05-21
-decision-makers: Mohd Faiz Hasim
+decision-makers: faizhasim
 ---
 
 # Use HTML parse_mode over MarkdownV2 for Telegram Messages

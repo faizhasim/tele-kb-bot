@@ -1,7 +1,7 @@
 ---
 status: proposed
 date: 2026-05-24
-decision-makers: Mohd Faiz Hasim
+decision-makers: faizhasim
 ---
 
 # Auto-Indexing Strategy for qmd
