@@ -45,11 +45,11 @@ import type { ScratchpadItem } from '../memory/types';
 const QMD_URI_RE = /^qmd:\/\/([^/]+)\/(.+)$/;
 
 /**
- * qmd normalizes dots and other special characters in directory names to
- * hyphens (e.g. `20.20-sejati` → `20-20-sejati`).  This helper resolves
- * each path segment against the real filesystem, trying exact match first
- * and then a fuzzy match that treats hyphens in the qmd path as wildcards
- * for dots or hyphens.
+ * qmd normalizes non-alphanumeric characters in paths to hyphens
+ * (using `[^\p{L}\p{N}$]+` → `-`).  This helper resolves each path
+ * segment against the real filesystem, trying exact match first and
+ * then matching by canonical form (treating all non-alphanumeric
+ * characters as equivalent).
  *
  * Returns the real filesystem path, or the unresolved path as fallback.
  */
@@ -64,12 +64,18 @@ const resolveQmdToRealPath = (vaultDir: string, qmdRelativePath: string): string
       current = exact;
       continue;
     }
-    // Fuzzy match: each hyphen/dot in the segment can be a dot OR a hyphen
+    // Fuzzy match: canonical-form comparison (all non-alnum treated as equivalent)
     try {
       const entries = readdirSync(current, { withFileTypes: true });
-      const pattern = segment.replace(/[-.]/g, '[-.]');
-      const re = new RegExp(`^${pattern}$`);
-      const match = entries.find((e) => (e.isFile() || e.isDirectory() ? re.test(e.name) : false));
+      const canonical = (s: string) =>
+        s
+          .replace(/[^\p{L}\p{N}$]+/gu, '_')
+          .replace(/^_+|_+$/g, '')
+          .toLowerCase();
+      const canonicalSegment = canonical(segment);
+      const match = entries.find((e) =>
+        e.isFile() || e.isDirectory() ? canonical(e.name) === canonicalSegment : false,
+      );
       if (match) {
         current = join(current, match.name);
         continue;

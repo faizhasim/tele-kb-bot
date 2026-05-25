@@ -122,6 +122,44 @@ describe('resolveQmdToRealPath', () => {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it('resolves space-to-hyphen segments via filesystem lookup', async () => {
+    const { mkdtempSync, writeFileSync, mkdirSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const tempDir = mkdtempSync(join(tmpdir(), 'qmd-space-'));
+    try {
+      // Create file with spaces in name (as on real filesystem)
+      mkdirSync(join(tempDir, 'docs'), { recursive: true });
+      writeFileSync(join(tempDir, 'docs', '2026-03-25 tax filing 2025.md'), '');
+
+      // qmd returns hyphens instead of spaces — resolveQmdToRealPath should find the real path
+      const result = resolveQmdToRealPath(tempDir, 'docs/2026-03-25-tax-filing-2025.md');
+      expect(result).toBe(join(tempDir, 'docs', '2026-03-25 tax filing 2025.md'));
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('resolves special-chars-to-hyphen segments via filesystem lookup', async () => {
+    const { mkdtempSync, writeFileSync, mkdirSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const tempDir = mkdtempSync(join(tmpdir(), 'qmd-special-'));
+    try {
+      // Create file with underscores, parens, dots (as on real filesystem)
+      mkdirSync(join(tempDir, '40.30-tax'), { recursive: true });
+      writeFileSync(join(tempDir, '40.30-tax', 'EAFORM_2025_E91120522-05_002227_en-US (1).md'), '');
+
+      // qmd normalizes underscores, parens, and spaces to hyphens
+      const result = resolveQmdToRealPath(tempDir, '40-30-tax/EAFORM-2025-E91120522-05-002227-en-US-1.md');
+      expect(result).toBe(join(tempDir, '40.30-tax', 'EAFORM_2025_E91120522-05_002227_en-US (1).md'));
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('formatObsidianUri', () => {
