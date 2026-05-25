@@ -19,14 +19,14 @@ const getDefaultConfig = (): Config => ({
   llm: {
     provider: 'opencode-go',
     model: 'deepseek-v4-flash',
-    reasoning: 'high',
+    reasoning: 'off',
   },
   memory: {
     enabled: true,
     mode: 'ephemeral',
     auto_inject: true,
     search: {
-      max_results: 5,
+      max_results: 3,
       mode: 'keyword',
     },
     cache: {
@@ -36,7 +36,10 @@ const getDefaultConfig = (): Config => ({
     qmd: {
       enabled: false,
       binary_path: 'qmd',
+      update_interval_seconds: 300, // 5 minutes
+      embed_interval_seconds: 3600, // 60 minutes
     },
+    search_tools_enabled: false,
   },
   bot: {
     max_attachments_per_turn: 10,

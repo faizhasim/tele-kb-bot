@@ -8,12 +8,15 @@
  */
 
 import type { MemoryBackend } from './interface';
-import { detect, query as qmdQuery, run } from './qmd';
+import { configure as configureQmd, detect, query as qmdQuery, run } from './qmd';
 import type { SearchResult } from './types';
 
 // ─── Factory ─────────────────────────────────────────────────────────
 
-const createQmdMemoryBackend = (vaultDirectories: ReadonlyArray<string> = []): MemoryBackend => {
+const createQmdMemoryBackend = (binaryPath: string, vaultDirectories: ReadonlyArray<string> = []): MemoryBackend => {
+  // Apply the configured binary path so detect() and run() use it
+  configureQmd(binaryPath);
+
   let available = false;
 
   const backend: MemoryBackend = {
@@ -23,10 +26,11 @@ const createQmdMemoryBackend = (vaultDirectories: ReadonlyArray<string> = []): M
       available = detect();
       if (!available) return;
 
-      // Index each vault directory via qmd
+      // Add/update each vault directory as a qmd collection, then update index
       for (const vaultDir of vaultDirectories) {
-        run(['index', vaultDir], 60_000);
+        run(['collection', 'add', vaultDir], 30_000);
       }
+      run(['update'], 120_000);
     },
 
     search: async (query: string, maxResults = 5): Promise<ReadonlyArray<SearchResult>> => {

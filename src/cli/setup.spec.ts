@@ -36,6 +36,14 @@ const mockIndex = vi.hoisted(() => ({ indexCommand: vi.fn() }));
 vi.mock('./launchd', () => mockLaunchd);
 vi.mock('./index', () => mockIndex);
 
+// Mock node:child_process so resolveQmdBinaryPath() doesn't actually run
+const mockExecFileSync = vi.hoisted(() =>
+  vi.fn().mockImplementation(() => {
+    throw new Error('qmd not found in test env');
+  }),
+);
+vi.mock('node:child_process', () => ({ execFileSync: mockExecFileSync }));
+
 import type { CLIOptions } from './main';
 import { promptPassword, promptText, setupCommand } from './setup';
 
@@ -935,7 +943,10 @@ describe('setupCommand', () => {
 
       const config = readConfigFromDisk();
       expect((config?.memory as Record<string, unknown>).mode).toBe('persistent');
-      expect((config?.memory as Record<string, unknown>).qmd).toEqual({ enabled: true, binary_path: 'qmd' });
+      const qmd = (config?.memory as Record<string, unknown>).qmd as Record<string, unknown>;
+      expect(qmd.enabled).toBe(true);
+      expect(typeof qmd.binary_path).toBe('string');
+      expect(qmd.binary_path.length).toBeGreaterThan(0);
     });
 
     it('falls back to existing cache entries on invalid input', async () => {

@@ -7,6 +7,7 @@
  * @module
  */
 
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cancel, intro, isCancel, outro, password, select, spinner, text } from '@clack/prompts';
@@ -117,6 +118,7 @@ interface SetupState {
   cacheMaxEntries: number;
   cacheMaxSizeBytes: number;
   vaultDirectories: Array<string>;
+  qmdBinaryPath: string;
 }
 
 export function buildConfig(state: SetupState): Record<string, unknown> {
@@ -125,18 +127,18 @@ export function buildConfig(state: SetupState): Record<string, unknown> {
     llm: {
       provider: 'opencode-go',
       model: 'deepseek-v4-flash',
-      reasoning: 'high',
+      reasoning: 'off',
       ...(state.apiKey ? { api_key: state.apiKey } : {}),
     },
     memory: {
       enabled: true,
       mode: state.memoryMode,
       auto_inject: true,
-      search: { max_results: 5, mode: 'keyword' },
+      search: { max_results: 3, mode: 'keyword' },
       cache: { max_entries: state.cacheMaxEntries, max_size_bytes: state.cacheMaxSizeBytes },
       qmd: {
         enabled: state.memoryMode === 'persistent',
-        binary_path: 'qmd',
+        binary_path: state.qmdBinaryPath,
       },
     },
     bot: { max_attachments_per_turn: 10, streaming_preview: true, text_chunk_size: 4096, max_sessions: 5 },
@@ -154,6 +156,7 @@ function loadExistingConfig(configDir: string): SetupState {
     cacheMaxEntries: 100,
     cacheMaxSizeBytes: 104_857_600,
     vaultDirectories: [],
+    qmdBinaryPath: 'qmd',
   };
 
   if (!existsSync(configPath)) return defaults;
@@ -195,6 +198,7 @@ function loadExistingConfig(configDir: string): SetupState {
       vaultDirectories: Array.isArray(parsed.vault_directories)
         ? (parsed.vault_directories as Array<string>).filter((d) => typeof d === 'string')
         : defaults.vaultDirectories,
+      qmdBinaryPath: (memoryRaw?.qmd as Record<string, unknown> | undefined)?.binary_path ?? defaults.qmdBinaryPath,
     };
   } catch {
     return defaults;
@@ -218,6 +222,34 @@ export function validateSizeInput(input: string | undefined): string | undefined
   return 'Invalid size. Use format like "500MB", "2GB", "1500KB", "1TB".';
 }
 
+/** Resolve the full path to the qmd binary, or null if not found. */
+function resolveQmdBinaryPath(): string | null {
+  try {
+    const where = execFileSync('command', ['-v', 'qmd'], { encoding: 'utf-8', stdio: 'pipe' });
+    const resolved = where.trim();
+    if (resolved.length > 0 && existsSync(resolved)) return resolved;
+  } catch {
+    // not found via PATH
+  }
+
+  // Check common installation locations as fallback
+  const candidates = [
+    '/opt/homebrew/bin/qmd',
+    '/usr/local/bin/qmd',
+    ...(process.env.HOME
+      ? [
+          join(process.env.HOME, '.local', 'share', 'pnpm', 'bin', 'qmd'),
+          join(process.env.HOME, '.local', 'bin', 'qmd'),
+        ]
+      : []),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  return null;
+}
+
 // ─── Main Setup Command ──────────────────────────────────────────────
 
 export async function setupCommand(options: CLIOptions): Promise<void> {
@@ -239,6 +271,7 @@ export async function setupCommand(options: CLIOptions): Promise<void> {
   let cacheMaxEntries: number;
   let cacheMaxSizeBytes: number;
   let vaultDirectories: Array<string>;
+  let qmdBinaryPath: string;
 
   if (options.nonInteractive) {
     botToken = process.env.TELEGRAM_BOT_TOKEN ?? existing.botToken;
@@ -262,6 +295,7 @@ export async function setupCommand(options: CLIOptions): Promise<void> {
     cacheMaxEntries = existing.cacheMaxEntries;
     cacheMaxSizeBytes = existing.cacheMaxSizeBytes;
     vaultDirectories = existing.vaultDirectories;
+    qmdBinaryPath = existing.qmdBinaryPath;
   } else {
     // ── Bot token ────────────────────────────────────────────────
     const botTokenMaybe = await promptPassword('Paste your Telegram bot token', existing.botToken || undefined);
@@ -324,6 +358,27 @@ export async function setupCommand(options: CLIOptions): Promise<void> {
       ],
       modeIdx,
     );
+
+    // ── Qmd binary path ──────────────────────────────────────────
+    if (memoryMode === 'persistent') {
+      const s = spinner();
+      s.start('Checking qmd binary...');
+      try {
+        const resolved = resolveQmdBinaryPath();
+        if (resolved) {
+          qmdBinaryPath = resolved;
+          s.stop(`qmd found at: ${resolved}`);
+        } else {
+          s.stop('qmd binary not found. Install with: brew install faizhasim/tele-kb-bot/qmd');
+          qmdBinaryPath = existing.qmdBinaryPath;
+        }
+      } catch {
+        s.stop('qmd binary not found. Install with: brew install faizhasim/tele-kb-bot/qmd');
+        qmdBinaryPath = existing.qmdBinaryPath;
+      }
+    } else {
+      qmdBinaryPath = existing.qmdBinaryPath;
+    }
 
     // ── Cache max entries ────────────────────────────────────────
     const entriesRaw = await promptText(
@@ -411,6 +466,7 @@ export async function setupCommand(options: CLIOptions): Promise<void> {
       cacheMaxEntries,
       cacheMaxSizeBytes,
       vaultDirectories,
+      qmdBinaryPath,
     }),
   );
   if (apiKey) writeAuthJson(configDir, apiKey);

@@ -44,6 +44,10 @@ const CacheConfig = S.Struct({
 const QmdConfig = S.Struct({
   enabled: S.Boolean,
   binary_path: S.String,
+  /** How often to re-index collections for full-text freshness (seconds). Default: 300 (5 min). */
+  update_interval_seconds: S.optional(S.Number),
+  /** How often to refresh vector embeddings (seconds). Default: 3600 (60 min). */
+  embed_interval_seconds: S.optional(S.Number),
 });
 
 const MemoryConfig = S.Struct({
@@ -54,6 +58,8 @@ const MemoryConfig = S.Struct({
   search: SearchConfig,
   cache: CacheConfig,
   qmd: QmdConfig,
+  /** Enable agent-accessible search tools (memory_search, memory_read). Disabled by default — auto_inject handles search. */
+  search_tools_enabled: S.optional(S.Boolean),
 });
 
 // ─── Bot ─────────────────────────────────────────────────────────────

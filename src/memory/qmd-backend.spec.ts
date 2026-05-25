@@ -2,14 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createQmdMemoryBackend } from './qmd-backend';
 
 // Create mock functions before vi.mock runs (hoisted via vi.hoisted)
-const { mockDetect, mockQuery } = vi.hoisted(() => ({
+const { mockDetect, mockQuery, mockRun, mockConfigure } = vi.hoisted(() => ({
   mockDetect: vi.fn(),
   mockQuery: vi.fn(),
+  mockRun: vi.fn(),
+  mockConfigure: vi.fn(),
 }));
 
 vi.mock('./qmd', () => ({
+  configure: mockConfigure,
   detect: mockDetect,
   query: mockQuery,
+  run: mockRun,
 }));
 
 describe('QmdMemoryBackend', () => {
@@ -17,7 +21,11 @@ describe('QmdMemoryBackend', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    backend = createQmdMemoryBackend();
+    backend = createQmdMemoryBackend('qmd');
+  });
+
+  it('calls configure with the given binary path', () => {
+    expect(mockConfigure).toHaveBeenCalledWith('qmd');
   });
 
   it('isAvailable returns false initially', () => {

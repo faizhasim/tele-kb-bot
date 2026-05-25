@@ -86,6 +86,13 @@ memory:
     # Can also be set via QMD_BINARY_PATH env var.
     binary_path: string
 
+    # Enable agent-accessible search tools (memory_search, memory_read).
+    # Default: false
+    # When false, search is handled entirely by auto_inject —
+    # the agent cannot search on its own. Enable only if you
+    # need agent-driven ad-hoc searches.
+    search_tools_enabled: boolean
+
 # ─── Bot Behaviour ───────────────────────────────────────────────────
 bot:
   # Maximum file attachments the agent can send per turn. Default: 10

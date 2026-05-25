@@ -18,9 +18,9 @@ describe('READ_ONLY_SYSTEM_PROMPT_BASE', () => {
     expect(READ_ONLY_SYSTEM_PROMPT_BASE).toContain('knowledge base');
     expect(READ_ONLY_SYSTEM_PROMPT_BASE).toContain('assistant');
     expect(READ_ONLY_SYSTEM_PROMPT_BASE).toContain('Telegram');
-    expect(READ_ONLY_SYSTEM_PROMPT_BASE).toContain('read-only');
+    expect(READ_ONLY_SYSTEM_PROMPT_BASE).toContain('## Important');
     expect(READ_ONLY_SYSTEM_PROMPT_BASE).toContain('Telegram HTML');
-    expect(READ_ONLY_SYSTEM_PROMPT_BASE).toContain('memory_search');
+    expect(READ_ONLY_SYSTEM_PROMPT_BASE).toContain('automatically searched');
   });
 });
 

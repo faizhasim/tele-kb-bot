@@ -100,7 +100,12 @@ const parseYamlToPartial = (raw: Record<string, unknown>): Partial<Config> => {
       const qmd: Record<string, unknown> = {};
       if (typeof q.enabled === 'boolean') qmd.enabled = q.enabled;
       if (typeof q.binary_path === 'string') qmd.binary_path = q.binary_path;
+      if (typeof q.update_interval_seconds === 'number') qmd.update_interval_seconds = q.update_interval_seconds;
+      if (typeof q.embed_interval_seconds === 'number') qmd.embed_interval_seconds = q.embed_interval_seconds;
       (result.memory as Record<string, unknown>).qmd = qmd;
+    }
+    if (typeof m.search_tools_enabled === 'boolean') {
+      (result.memory as Record<string, unknown>).search_tools_enabled = m.search_tools_enabled;
     }
   }
 

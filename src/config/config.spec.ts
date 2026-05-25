@@ -132,10 +132,10 @@ describe('getDefaultConfig', () => {
     const config = getDefaultConfig();
     expect(config.llm.provider).toBe('opencode-go');
     expect(config.llm.model).toBe('deepseek-v4-flash');
-    expect(config.llm.reasoning).toBe('high');
+    expect(config.llm.reasoning).toBe('off');
     expect(config.memory.enabled).toBe(true);
     expect(config.memory.mode).toBe('ephemeral');
-    expect(config.memory.search.max_results).toBe(5);
+    expect(config.memory.search.max_results).toBe(3);
     expect(config.memory.cache.max_entries).toBe(100);
     expect(config.memory.cache.max_size_bytes).toBe(104_857_600);
     expect(config.bot.streaming_preview).toBe(true);

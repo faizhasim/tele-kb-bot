@@ -14,6 +14,7 @@ import { ensureConfigDirs, resolveConfigDir } from '../config/paths';
 import { BINARY_NAME } from '../constants';
 import { createCLILogger, createDaemonPinoLogger, EffectLoggerLiveWithFile, resolveLogFile } from '../logger';
 import { createMemoryContext } from '../memory/manager';
+import { createQmdScheduler } from '../memory/scheduler';
 import { createBotController } from './bot';
 import { createSessionRegistry } from './session-registry';
 
@@ -26,6 +27,7 @@ import { createSessionRegistry } from './session-registry';
 const setupSignalHandlers = (
   controller: ReturnType<typeof createBotController>,
   registry: ReturnType<typeof createSessionRegistry>,
+  scheduler?: { stop(): void },
 ): void => {
   const log = createCLILogger(BINARY_NAME);
   let shuttingDown = false;
@@ -38,8 +40,10 @@ const setupSignalHandlers = (
     await controller.stop();
     log.info('Bot stopped');
 
+    scheduler?.stop();
+    log.info('Scheduler stopped');
+
     await registry.disposeAll();
-    log.info('Sessions disposed');
 
     process.exit(0);
   };
@@ -96,6 +100,24 @@ const startDaemon = (configOverride?: string): Promise<void> =>
             'Memory backend initialised',
           );
 
+          // Start periodic qmd index refresh if persistent mode
+          let scheduler: ReturnType<typeof createQmdScheduler> | undefined;
+          if (config.memory.mode === 'persistent' && config.memory.qmd.enabled) {
+            scheduler = createQmdScheduler(
+              config.memory.qmd.update_interval_seconds,
+              config.memory.qmd.embed_interval_seconds,
+              daemonLog,
+            );
+            scheduler.start();
+            daemonLog.info(
+              {
+                updateInterval: config.memory.qmd.update_interval_seconds,
+                embedInterval: config.memory.qmd.embed_interval_seconds,
+              },
+              'qmd scheduler started',
+            );
+          }
+
           const registry = createSessionRegistry(config, resolvedDir);
 
           const tokenResp = yield* Effect.promise(() =>
@@ -110,7 +132,7 @@ const startDaemon = (configOverride?: string): Promise<void> =>
           daemonLog.info({ botName: tokenData.result?.first_name }, 'Bot token verified');
 
           const controller = createBotController(config, registry, memoryCtx);
-          setupSignalHandlers(controller, registry);
+          setupSignalHandlers(controller, registry, scheduler);
 
           daemonLog.info('Starting bot polling...');
           yield* Effect.promise(() => controller.start());

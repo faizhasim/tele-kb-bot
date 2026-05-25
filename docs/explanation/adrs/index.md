@@ -17,6 +17,8 @@ Each ADR documents a significant architectural decision — the context, alterna
 | [0007](0007-distribution-strategy-homebrew.md) | Distribution Strategy — Homebrew Tap | Accepted | 2026-05-21 |
 | [0008](0008-use-html-over-markdownv2.md) | Use HTML parse_mode over MarkdownV2 for Telegram Messages | Accepted | 2026-05-21 |
 | [0009](0009-tool-surface-restriction.md) | Agent Tool Surface Restriction | Accepted | 2026-05-23 |
+| [0010](0010-auto-indexing-strategy.md) | Auto-Indexing Strategy for qmd | Proposed | 2026-05-24 |
+| [0011](0011-tool-surface-refinements.md) | Tool Surface Refinements | Accepted | 2026-05-25 |
 
 ## Decision Graph
 
@@ -39,6 +41,8 @@ flowchart LR
     subgraph Refinements["Refinements"]
         F[ADR-0008<br/>HTML over MarkdownV2]
         G[ADR-0009<br/>Tool Restriction]
+        H[ADR-0010<br/>Auto-Indexing]
+        I[ADR-0011<br/>Tool Refinements]
     end
 
     A -->|defines agent dir| B
@@ -49,6 +53,7 @@ flowchart LR
     C -->|distributes bot| E
     D -->|memory context| B
     G -->|restricts tools in| B
+    I -->|further restricts| B
 ```
 
 ## Reading Order

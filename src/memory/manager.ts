@@ -190,7 +190,7 @@ const createMemoryContext = async (config: Config, configDir: string): Promise<M
       createQmdMemoryBackend: undefined as undefined,
     }));
     if (loadQmd) {
-      backend = loadQmd(config.vault_directories);
+      backend = loadQmd(config.memory.qmd.binary_path, config.vault_directories);
     } else {
       backend = createBM25MemoryBackend(memoryDir, config.vault_directories);
     }

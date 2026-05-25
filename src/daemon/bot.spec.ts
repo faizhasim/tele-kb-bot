@@ -43,6 +43,7 @@ const {
       error: vi.fn(),
       warn: vi.fn(),
       debug: vi.fn(),
+      trace: vi.fn(),
     }),
     mockBuildMemoryContext: vi.fn().mockReturnValue(''),
     mockReadMemorySync: vi.fn().mockReturnValue(''),
@@ -344,7 +345,10 @@ describe('createBotController', () => {
 
       await handler(ctx);
 
-      expect(mockBot.api.sendMessage).toHaveBeenCalledWith(67_890, 'Done — no text response.');
+      expect(mockBot.api.sendMessage).toHaveBeenCalledWith(
+        67_890,
+        'Done — no text response. Check the bot logs for details.',
+      );
     });
 
     it('recovers when session.prompt throws', async () => {

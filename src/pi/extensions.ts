@@ -5,28 +5,24 @@
  * They are the only tools available to the agent after `noTools: "builtin"`
  * disables the pi SDK's default read/bash/edit/write tools.
  *
- * Available tools (5):
- *
- * - `telegram_attach` — Queue file paths for sending as Telegram attachments
- *   after the agent turn completes. The bot controller reads the queued paths
- *   after prompt() resolves and sends each file via sendDocument.
+ * Core tools (always registered):
  *
  * - `memory_write` — Append content to MEMORY.md and today's daily log,
  *   then rebuild the search index so new entries are immediately findable.
  *
- * - `memory_read` — Search the knowledge base via the configured backend
- *   (qmd in persistent mode, BM25 in ephemeral mode). Falls back to raw
- *   MEMORY.md content when search returns nothing.
- *
  * - `scratchpad` — Manage a persistent checklist stored in SCRATCHPAD.md.
  *   Supports list/add/done/clear_done actions.
  *
- * - `memory_search` — Full-text search against the knowledge base backend.
- *   Returns ranked results with file paths, scores, and content snippets.
+ * Optional tools (enabled via `memory.search_tools_enabled` config flag):
  *
- * All memory operations (write, read, search, scratchpad) are scoped to
- * `<config_dir>/memory/`. The agent has no filesystem access outside this
- * directory and no shell execution capability.
+ * - `memory_read` — Search the knowledge base via the configured backend.
+ *   Disabled by default — auto_inject already provides search results.
+ *
+ * - `memory_search` — Full-text search against the knowledge base backend.
+ *   Disabled by default — auto_inject already provides search results.
+ *
+ * All memory operations are scoped to `<config_dir>/memory/`. The agent has
+ * no filesystem access outside this directory and no shell execution capability.
  *
  * @module
  */
@@ -40,13 +36,7 @@ import type { ExtensionAPI, ExtensionFactory } from '@mariozechner/pi-coding-age
 // Config validation uses @effect/schema instead — see src/config/.
 import { Type } from 'typebox';
 import type { MemoryContext } from '../memory/interface';
-import {
-  appendMemorySync,
-  appendTodaySync,
-  readMemorySync,
-  readScratchpadSync,
-  writeScratchpadSync,
-} from '../memory/manager';
+import { appendMemorySync, appendTodaySync, readScratchpadSync, writeScratchpadSync } from '../memory/manager';
 import { addItem, clearDone, openItems, parseScratchpad, renderScratchpad } from '../memory/scratchpad';
 import type { ScratchpadItem } from '../memory/types';
 
@@ -134,52 +124,6 @@ const formatObsidianUri = (filePath: string, vaultDirectories: ReadonlyArray<str
 // Module-level memory context, set by createExtensionFactories
 let _memoryCtx: MemoryContext | null = null;
 
-// ─── Telegram Attach Tool ────────────────────────────────────────────
-
-const telegramAttachSchema = Type.Object({
-  file_paths: Type.Array(Type.String(), {
-    description: 'File paths to attach to the Telegram reply',
-  }),
-  caption: Type.Optional(Type.String({ description: 'Optional caption for the files' })),
-});
-
-/**
- * Create the `telegram_attach` extension factory.
- *
- * Registers a tool that queues file paths to be sent as Telegram attachments
- * after the agent completes its response. The bot controller reads file paths
- * from the assistant's output and processes each as a sendDocument API call.
- *
- * File paths must be absolute and readable by the bot process. Typical sources
- * are files discovered in vault directories during memory_search results.
- *
- * The caption is optional and appears as the message text above the attachment.
- */
-const createTelegramAttachExtension = (): ExtensionFactory => {
-  return (pi: ExtensionAPI) => {
-    pi.registerTool({
-      name: 'telegram_attach',
-      label: 'Attach files to Telegram',
-      description:
-        'Queue file paths to be sent as Telegram attachments (documents, photos, etc.) after the response is complete. ' +
-        'Use this when the user requests files that exist in the workspace.',
-      parameters: telegramAttachSchema,
-      execute(_toolCallId: string, params: { file_paths: string[]; caption?: string }) {
-        const fileList = params.file_paths.map((p) => `- ${p}`).join('\n');
-        const caption = params.caption ? `\nCaption: ${params.caption}` : '';
-        return Promise.resolve({
-          content: [
-            {
-              type: 'text' as const,
-              text: `Queued ${params.file_paths.length} file(s) for Telegram attachment:\n${fileList}${caption}\n\nFiles will be sent after the response is complete.`,
-            },
-          ],
-        });
-      },
-    });
-  };
-};
-
 // ─── Memory Tools ────────────────────────────────────────────────────
 
 /**
@@ -244,19 +188,6 @@ const createMemoryWriteExtension = (): ExtensionFactory => {
   };
 };
 
-/**
- * Create the `memory_read` extension factory.
- *
- * Registers a tool that searches the knowledge base via the configured backend
- * (qmd in persistent mode, BM25 in ephemeral mode). Results are returned as
- * ranked markdown snippets with file paths and relevance scores.
- *
- * If the backend returns no results, falls back to dumping the raw MEMORY.md
- * content (truncated to 2000 chars) so the agent can still see what's stored.
- *
- * Returns a clear "No entries found" message when both search and fallback
- * produce nothing.
- */
 const createMemoryReadExtension = (): ExtensionFactory => {
   return (pi: ExtensionAPI) => {
     const memoryReadSchema = Type.Object({
@@ -437,7 +368,7 @@ const createMemorySearchExtension = (): ExtensionFactory => {
     pi.registerTool({
       name: 'memory_search',
       label: 'Search memory',
-      description: 'Search the knowledge base using BM25 keyword search. Returns ranked results with relevance scores.',
+      description: 'Search the knowledge base. Returns ranked results with relevance scores.',
       parameters: memorySearchSchema,
       async execute(_toolCallId: string, params: { query: string; max_results?: number }) {
         const ctx = _memoryCtx;
@@ -497,17 +428,15 @@ const createMemorySearchExtension = (): ExtensionFactory => {
  * @param memoryCtx - Shared memory context with backend + configDir. Pass null
  *                    during testing or early startup to get stub responses.
  */
-const createExtensionFactories = (memoryCtx?: MemoryContext): ExtensionFactory[] => {
+const createExtensionFactories = (memoryCtx?: MemoryContext, searchToolsEnabled = false): ExtensionFactory[] => {
   if (memoryCtx) {
     _memoryCtx = memoryCtx;
   }
-  return [
-    createTelegramAttachExtension(),
-    createMemoryWriteExtension(),
-    createMemoryReadExtension(),
-    createScratchpadExtension(),
-    createMemorySearchExtension(),
-  ];
+  const factories: ExtensionFactory[] = [createMemoryWriteExtension(), createScratchpadExtension()];
+  if (searchToolsEnabled) {
+    factories.push(createMemoryReadExtension(), createMemorySearchExtension());
+  }
+  return factories;
 };
 
 export { createExtensionFactories, formatObsidianUri, resolveQmdToRealPath };

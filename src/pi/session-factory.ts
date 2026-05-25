@@ -84,7 +84,7 @@ export async function createPiSession(
     modelRegistry,
     settingsManager,
     resourceLoaderOptions: {
-      extensionFactories: createExtensionFactories(memoryCtx),
+      extensionFactories: createExtensionFactories(memoryCtx, config.memory.search_tools_enabled ?? false),
       systemPrompt,
       noExtensions: true, // Don't auto-discover extensions from filesystem
       noSkills: true,
