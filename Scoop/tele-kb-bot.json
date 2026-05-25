@@ -1,12 +1,12 @@
 {
-    "version": "0.1.4",
+    "version": "0.1.5",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.4/tele-kb-bot-windows-amd64.zip",
+            "url": "https://github.com/faizhasim/tele-kb-bot/releases/download/v0.1.5/tele-kb-bot-windows-amd64.zip",
             "bin": [
                 "tele-kb-bot.exe"
             ],
-            "hash": "1c3a19a37a65cd2587ea0dc0f7d56fdd23b320086fba229b64828e3d73cda032"
+            "hash": "8940e2c47b70c071b20e701073344e166a3c949c26331c0b9850d29196385123"
         }
     },
     "homepage": "https://github.com/faizhasim/tele-kb-bot",
