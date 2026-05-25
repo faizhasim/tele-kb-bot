@@ -105,11 +105,7 @@ plugins:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/faizhasim/tele-kb-bot
-    - icon: fontawesome/brands/telegram
-      link: https://t.me/faizhasim
-    - icon: fontawesome/solid/mug-saucer
-      link: https://www.buymeacoffee.com/faizhasim
+      link: https://github.com/faizhasim
 
   generator: false
 
@@ -142,6 +138,7 @@ nav:
     - Configuration: reference/configuration.md
     - Architecture: reference/architecture.md
     - Security: reference/security.md
+    - Known Issues: reference/known-issues.md
 
   - Explanation:
     - explanation/index.md

@@ -2,6 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { configure, detect, query, reset, run, search, vsearch } from './qmd';
 
 // ---------------------------------------------------------------------------
+// Mock logger
+// ---------------------------------------------------------------------------
+const mockLogger = vi.hoisted(() => ({
+  error: vi.fn(),
+}));
+
+vi.mock('../logger', () => ({
+  getLogger: () => mockLogger,
+}));
+
+// ---------------------------------------------------------------------------
 // Mock execFileSync from node:child_process
 // ---------------------------------------------------------------------------
 const mockExec = vi.hoisted(() => vi.fn());
@@ -150,12 +161,26 @@ describe('run', () => {
     expect(run(['search', 'test'])).toBe(output);
   });
 
-  it('returns null when execFileSync throws despite detection', () => {
+  it('returns null and logs the error when execFileSync throws despite detection', () => {
     mockExec.mockImplementation((cmd: string) => {
       if (cmd === 'command') return '';
-      throw new Error('exec failed');
+      throw Object.assign(new Error('exec failed'), {
+        code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+        status: 1,
+        stderr: Buffer.from('Error: NODE_MODULE_VERSION mismatch'),
+      });
     });
     expect(run(['search', 'test'])).toBeNull();
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        binary: 'qmd',
+        args: ['search', 'test'],
+        error: 'exec failed',
+        code: 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+        status: 1,
+      }),
+      'qmd run failed',
+    );
   });
 
   it('passes timeout and encoding options', () => {

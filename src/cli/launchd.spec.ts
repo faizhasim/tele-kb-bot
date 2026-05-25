@@ -17,6 +17,7 @@ import type { CLIOptions } from './main';
 
 const {
   mockExecSync,
+  mockExecFileSync,
   mockExistsSync,
   mockWriteFileSync,
   mockUnlinkSync,
@@ -25,8 +26,12 @@ const {
   mockEnsureConfigDirsSync,
   mockCreateCLILogger,
   mockQuestion,
+  mockText,
+  mockIsCancel,
+  mockCancel,
 } = vi.hoisted(() => ({
   mockExecSync: vi.fn(),
+  mockExecFileSync: vi.fn(),
   mockExistsSync: vi.fn(),
   mockWriteFileSync: vi.fn(),
   mockUnlinkSync: vi.fn(),
@@ -40,12 +45,22 @@ const {
     debug: vi.fn(),
   }),
   mockQuestion: vi.fn((_q: string, cb: (a: string) => void) => cb('y')),
+  mockText: vi.fn(),
+  mockIsCancel: vi.fn(),
+  mockCancel: vi.fn(),
 }));
 
 // ─── Module mocks ───────────────────────────────────────────────────
 
 vi.mock('node:child_process', () => ({
+  execFileSync: mockExecFileSync,
   execSync: mockExecSync,
+}));
+
+vi.mock('@clack/prompts', () => ({
+  text: mockText,
+  isCancel: mockIsCancel,
+  cancel: mockCancel,
 }));
 
 vi.mock('node:fs', () => ({
@@ -137,6 +152,22 @@ describe('launchdAddCommand', () => {
     mockQuestion.mockImplementation((_q: string, cb: (a: string) => void) => cb('y'));
     mockWriteFileSync.mockImplementation(() => {});
 
+    // execFileSync defaults: resolve node and qmd paths
+    mockExecFileSync.mockImplementation((cmd: string, args: string[]) => {
+      if (cmd === 'command' && args[0] === '-v' && args[1] === 'node') {
+        return '/Users/test/.local/share/mise/shims/node\n';
+      }
+      if (cmd === 'command' && args[0] === '-v' && args[1] === 'qmd') {
+        return '/opt/homebrew/bin/qmd\n';
+      }
+      return '';
+    });
+
+    // @clack/prompts defaults: user accepts each prompt's placeholder value
+    mockText.mockImplementation((opts: { placeholder?: string }) => opts?.placeholder ?? '');
+    mockIsCancel.mockReturnValue(false);
+    mockCancel.mockImplementation(() => {});
+
     // Default: binary running as bun (triggers Homebrew fallback)
     process.argv[0] = '/opt/homebrew/bin/bun';
 
@@ -172,11 +203,12 @@ describe('launchdAddCommand', () => {
       expect(getConfigDirFromPlist(plist)).toBe(DEFAULT_CONFIG_DIR);
     });
 
-    it('includes PATH environment variable', async () => {
+    it('includes PATH environment variable with detected node and qmd bin dirs', async () => {
       await launchdAddCommand(defaultOptions);
 
       const plist = getCapturedPlist();
-      expect(plist).toContain('/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin');
+      // Both node and qmd bin dirs are prepended
+      expect(plist).toContain('/Users/test/.local/share/mise/shims:/opt/homebrew/bin:/opt/homebrew/bin');
     });
 
     it('includes KeepAlive, RunAtLoad, and ThrottleInterval keys', async () => {
@@ -275,6 +307,142 @@ describe('launchdAddCommand', () => {
 
       const plist = getCapturedPlist();
       expect(getBinaryFromPlist(plist)).toBe('/opt/homebrew/bin/tele-kb-bot');
+    });
+  });
+  // ──────────────────────────────────────────────────────────────────
+  // resolveNodePath behavior (tested through launchdAddCommand)
+  // ──────────────────────────────────────────────────────────────────
+
+  describe('resolveNodePath (tested through launchdAddCommand)', () => {
+    it('prepends detected node bin dir to PATH when user accepts default', async () => {
+      await launchdAddCommand(defaultOptions);
+
+      const plist = getCapturedPlist();
+      expect(plist).toContain('/Users/test/.local/share/mise/shims:/opt/homebrew/bin');
+    });
+
+    it('prepends custom node bin dir to PATH when user overrides', async () => {
+      const customNodePath = '/custom/node/bin/node';
+      mockText.mockResolvedValueOnce(customNodePath);
+
+      await launchdAddCommand(defaultOptions);
+
+      const plist = getCapturedPlist();
+      // Should include the override's parent dir
+      expect(plist).toContain('/custom/node/bin:/opt/homebrew/bin');
+    });
+
+    it('logs and shows warning when user-entered path does not exist', async () => {
+      const nonexistentPath = '/nonexistent/node/bin/node';
+      mockText.mockResolvedValueOnce(nonexistentPath);
+      mockExistsSync.mockImplementation((path: string) => {
+        if (path === nonexistentPath) return false;
+        return true;
+      });
+      await launchdAddCommand(defaultOptions);
+
+      // User was prompted for both node (which returned nonexistent) and qmd
+      expect(mockText).toHaveBeenCalledTimes(2);
+
+      // PATH should not have the custom node prefix - qmd dir is still added
+      const plist = getCapturedPlist();
+      expect(plist).not.toContain('nonexistent');
+      expect(plist).toContain('/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin');
+    });
+
+    it('does not prompt and auto-uses detected path in non-interactive mode', async () => {
+      await launchdAddCommand({ ...defaultOptions, nonInteractive: true });
+
+      // @clack/prompts should NOT be called
+      expect(mockText).not.toHaveBeenCalled();
+
+      // PATH should still include the detected node bin dir
+      const plist = getCapturedPlist();
+      expect(plist).toContain('/Users/test/.local/share/mise/shims:/opt/homebrew/bin');
+    });
+
+    it('does not add custom PATH prefix when node not found', async () => {
+      mockExecFileSync.mockImplementation(() => {
+        throw new Error('command not found');
+      });
+
+      await launchdAddCommand(defaultOptions);
+
+      const plist = getCapturedPlist();
+      // PATH should be the default base path without any extra prefix
+      const expectedPath = '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin';
+      expect(plist).toContain(expectedPath);
+    });
+  });
+  // ──────────────────────────────────────────────────────────────────
+  // resolveQmdPath behavior (tested through launchdAddCommand)
+  // ──────────────────────────────────────────────────────────────────
+
+  describe('resolveQmdPath (tested through launchdAddCommand)', () => {
+    it('includes qmd bin dir in PATH when user accepts default', async () => {
+      await launchdAddCommand(defaultOptions);
+
+      const plist = getCapturedPlist();
+      // Both node and qmd dirs are prepended
+      expect(plist).toContain('/Users/test/.local/share/mise/shims:/opt/homebrew/bin');
+    });
+
+    it('prepends custom qmd bin dir when user overrides qmd path', async () => {
+      const customQmdPath = '/custom/qmd/bin/qmd';
+      // Node prompt uses default (placeholder), qmd prompt uses override
+      mockText
+        .mockResolvedValueOnce('/Users/test/.local/share/mise/shims/node') // node
+        .mockResolvedValueOnce(customQmdPath); // qmd
+
+      await launchdAddCommand(defaultOptions);
+
+      const plist = getCapturedPlist();
+      expect(plist).toContain('/Users/test/.local/share/mise/shims:/custom/qmd/bin');
+    });
+
+    it('skips qmd path when qmd binary not found', async () => {
+      mockExecFileSync.mockImplementation((cmd: string, args: string[]) => {
+        if (cmd === 'command' && args[0] === '-v' && args[1] === 'node') {
+          return '/Users/test/.local/share/mise/shims/node\n';
+        }
+        throw new Error('qmd not found');
+      });
+
+      await launchdAddCommand(defaultOptions);
+
+      const plist = getCapturedPlist();
+      // Only node dir is prepended
+      expect(plist).toContain('/Users/test/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin');
+    });
+
+    it('does not add qmd dir to PATH when user-entered qmd path does not exist', async () => {
+      const nonexistentQmd = '/nonexistent/qmd/bin/qmd';
+      // Node prompt accepts default, qmd prompt returns nonexistent
+      mockText
+        .mockResolvedValueOnce('/Users/test/.local/share/mise/shims/node') // node
+        .mockResolvedValueOnce(nonexistentQmd); // qmd
+      mockExistsSync.mockImplementation((path: string) => {
+        if (path === nonexistentQmd) return false;
+        return true;
+      });
+
+      await launchdAddCommand(defaultOptions);
+
+      const plist = getCapturedPlist();
+      // Node dir is still added, but not the nonexistent qmd dir
+      expect(plist).not.toContain('nonexistent');
+      expect(plist).toContain('/Users/test/.local/share/mise/shims:/opt/homebrew/bin:/usr/local/bin');
+    });
+
+    it('auto-uses detected qmd path in non-interactive mode', async () => {
+      await launchdAddCommand({ ...defaultOptions, nonInteractive: true });
+
+      // Both paths auto-used without prompts
+      expect(mockText).not.toHaveBeenCalled();
+
+      const plist = getCapturedPlist();
+      // Both node and qmd dirs should be in PATH
+      expect(plist).toContain('/Users/test/.local/share/mise/shims:/opt/homebrew/bin');
     });
   });
 

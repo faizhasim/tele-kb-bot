@@ -4,23 +4,32 @@
  * qmd (https://github.com/tobi/qmd) is a local markdown search engine supporting
  * BM25, vector semantic search, and hybrid search with LLM reranking.
  *
- * Integration strategy (informed by pi-memory):
- * - Detect qmd binary in PATH at startup
+ * Integration strategy:
+ * - Detect qmd binary at startup (absolute path from config)
  * - Index memory directory as a qmd collection
  * - Route search calls to qmd CLI based on configured mode
  * - Graceful degradation: if qmd not found, caller falls back to built-in BM25
+ *
+ * The binary path is configured via `memory.qmd.binary_path`. If the binary is
+ * found but fails at runtime (e.g. Node.js version mismatch in a pnpm shim),
+ * the error is logged with full stderr for diagnosis. No attempt is made to
+ * resolve an alternative Node.js or bypass the shell script — the user is
+ * expected to fix their environment or set a different `binary_path`.
  *
  * @module
  */
 
 import { execFileSync } from 'node:child_process';
+import { getLogger } from '../logger';
 
 let _available: boolean | null = null;
 let _binaryPath: string = 'qmd';
 
 const configure = (binaryPath: string): void => {
-  _binaryPath = binaryPath;
-  _available = null; // re-detect with new path
+  if (binaryPath !== _binaryPath) {
+    _binaryPath = binaryPath;
+    _available = null;
+  }
 };
 
 const detect = (): boolean => {
@@ -38,8 +47,19 @@ const reset = (): void => {
   _available = null;
 };
 
+// ─── Core runner ────────────────────────────────────────────────
+
+/**
+ * Run qmd with the given args.
+ *
+ * Attempts to execute the configured binary directly. On failure, logs the
+ * error with full stderr and returns null so callers fall back gracefully.
+ *
+ * @returns stdout on success, null on any failure.
+ */
 const run = (args: Array<string>, timeout = 30_000): string | null => {
   if (!detect()) return null;
+
   try {
     return execFileSync(_binaryPath, args, {
       encoding: 'utf-8',
@@ -47,7 +67,20 @@ const run = (args: Array<string>, timeout = 30_000): string | null => {
       timeout,
       env: { ...process.env, QMD_FORCE_CPU: '1' },
     });
-  } catch {
+  } catch (err: unknown) {
+    const error = err as Error & { stderr?: Buffer | string; status?: number; code?: string };
+    const stderrText = typeof error.stderr === 'string' ? error.stderr : (error.stderr?.toString() ?? '');
+    getLogger().error(
+      {
+        binary: _binaryPath,
+        args,
+        error: error.message,
+        code: error.code,
+        status: error.status,
+        stderr: stderrText.slice(0, 400),
+      },
+      'qmd run failed',
+    );
     return null;
   }
 };
