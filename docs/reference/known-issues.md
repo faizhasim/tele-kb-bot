@@ -86,3 +86,17 @@ The built-in BM25 backend runs entirely in-process — no external binary needed
 A persistent/on-disk BM25 backend is technically feasible — the scoring algorithm is the same, just backed by a disk-resident index instead of holding everything in memory. This has not been prioritised because the author uses qmd, which already handles persistence and incremental updates.
 
 If you need on-disk BM25 (for example, to reduce memory usage with a very large knowledge base without depending on qmd), open an issue or reach out. The building blocks are there; it mainly needs a serialisation format and lifecycle wiring.
+
+---
+
+## Text-Only Chat
+
+tele-kb-bot currently only processes **text messages**. Voice messages, images, videos, stickers, and other non-text media are silently ignored — the bot does not transcribe, caption, or analyse them.
+
+This is a deliberate scope limitation rather than a technical blocker. Adding media processing would require:
+
+- Voice transcription (via Whisper or a provider API)
+- Image understanding (vision-capable models, image attachment handling in GrammY)
+- Media type detection and routing in the message handler
+
+None of these are on the immediate roadmap. If media support is important for your use case, contributions or feature requests are welcome on [GitHub](https://github.com/faizhasim/tele-kb-bot).

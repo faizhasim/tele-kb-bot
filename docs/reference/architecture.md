@@ -36,7 +36,7 @@ flowchart LR
 
 The bot receives messages from Telegram through GrammY long-polling. Each message is checked against the allowed user whitelist and routed to a per-chat `AgentSession` managed by the session registry. Sessions are created lazily, evicted after 30 minutes of inactivity, and capped by a configurable pool limit.
 
-Memory context is injected into prompts when `memory.auto_inject` is enabled. The agent can also interact directly with the memory system through five compiled-in extension tools.
+Memory context is injected into prompts when `memory.auto_inject` is enabled. The agent can also interact directly with the memory system through compiled-in extension tools (memory write and scratchpad by default, plus optional search tools when configured).
 
 ## Layer Table
 

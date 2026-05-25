@@ -46,7 +46,7 @@ All log output passes through Pino's redaction engine. Any value at these paths 
 
 ## Agent Tool Surface Restriction
 
-Following [ADR-0009](../explanation/adrs/0009-tool-surface-restriction.md), the pi SDK's default built-in tools are disabled. The agent has **no shell execution** and **no arbitrary filesystem access**.
+Following [ADR-0009](../explanation/adrs/0009-tool-surface-restriction.md) and [ADR-0011](../explanation/adrs/0011-tool-surface-refinements.md), the pi SDK's default built-in tools are disabled. The agent has **no shell execution** and **no arbitrary filesystem access**.
 
 ### Removed Tools
 
@@ -60,21 +60,26 @@ These pi SDK default tools are **not available** to the agent:
 - `find` — filesystem enumeration
 - `ls` — directory listing
 
-### Allowed Tools
+### Default Allowed Tools
 
-After restriction, the agent has access to exactly five compiled-in extension tools:
+By default, the agent has access to exactly **two** compiled-in extension tools for writing facts and managing a checklist:
 
-| Tool                 | Purpose                                              |
-|----------------------|------------------------------------------------------|
-| `telegram_attach`    | Queue file paths to send as Telegram attachments     |
-| `memory_write`       | Append content to MEMORY.md (memory directory only)  |
-| `memory_read`        | Search and read from the knowledge base              |
-| `memory_search`      | Full-text search against the knowledge base backend  |
-| `scratchpad`         | Manage a persistent checklist (SCRATCHPAD.md)        |
+| Tool           | Purpose                                              |
+|----------------|------------------------------------------------------|
+| `memory_write` | Append content to MEMORY.md (memory directory only)  |
+| `scratchpad`   | Manage a persistent checklist (SCRATCHPAD.md)        |
+
+### Optional Search Tools
+
+When [`memory.search_tools_enabled: true`](configuration.md#full-yaml-schema) is set in the config, the agent also gets access to `memory_read` and `memory_search`. This is **disabled by default** because the bot already injects relevant search results automatically (`auto_inject`) — enabling agent-driven search can lead to redundant tool calls and slower responses.
+
+| Tool            | Purpose                                                      |
+|-----------------|--------------------------------------------------------------|
+| `memory_read`   | Search and read from the knowledge base                      |
+| `memory_search` | Full-text search against the knowledge base backend          |
 
 ### Scope Boundaries
 
 - **`memory_write`**: Writes only to `<config_dir>/memory/MEMORY.md`. Cannot write outside this directory.
 - **`memory_read`** and **`memory_search`**: Read from the configured memory backend (BM25 in-memory index or qmd). Results may include file paths from vault directories, but the agent cannot read those files directly — it only receives pre-computed snippets.
-- **`telegram_attach`**: Queues file paths provided by the memory search tools for Telegram attachment. The agent cannot read arbitrary files.
 - **`scratchpad`**: Reads and writes only `<config_dir>/memory/SCRATCHPAD.md`.
