@@ -206,7 +206,7 @@ describe('parseArgs', () => {
 
 describe('constants', () => {
   it('has a valid version string', () => {
-    expect(VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(VERSION).toMatch(/^\d+\.\d+\.\d+(-[A-Za-z0-9]+)*$/);
   });
 
   it('has a valid binary name', () => {
@@ -258,7 +258,7 @@ describe('runCLI', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     try {
       await runCLI(['version']);
-      expect(spy).toHaveBeenCalledWith('tele-kb-bot v0.1.0');
+      expect(spy).toHaveBeenCalledWith(`tele-kb-bot v${VERSION}`);
     } finally {
       spy.mockRestore();
     }
